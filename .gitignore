@@ -18,3 +18,5 @@
 *.v2
 TaskNest/.vs/TaskNest/FileContentIndex/bfe3ce09-3072-43d5-9cb2-8b5a7701b0dd.vsidx
 TaskNest/.vs/TaskNest/DesignTimeBuild/.dtbcache.v2
+/TaskNest/.vs/TaskNest/config
+/TaskNest/TaskNest
