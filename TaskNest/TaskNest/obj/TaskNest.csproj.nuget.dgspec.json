@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj": {}
+    "D:\\My campus document\\Acadamic Semester 6\\Ayurweda Hospital Project\\TaskNest\\TaskNest\\TaskNest.csproj": {}
   },
   "projects": {
-    "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj": {
+    "D:\\My campus document\\Acadamic Semester 6\\Ayurweda Hospital Project\\TaskNest\\TaskNest\\TaskNest.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
+        "projectUniqueName": "D:\\My campus document\\Acadamic Semester 6\\Ayurweda Hospital Project\\TaskNest\\TaskNest\\TaskNest.csproj",
         "projectName": "TaskNest",
-        "projectPath": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
-        "packagesPath": "C:\\Users\\USER\\.nuget\\packages\\",
-        "outputPath": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\obj\\",
+        "projectPath": "D:\\My campus document\\Acadamic Semester 6\\Ayurweda Hospital Project\\TaskNest\\TaskNest\\TaskNest.csproj",
+        "packagesPath": "C:\\Users\\wijes\\.nuget\\packages\\",
+        "outputPath": "D:\\My campus document\\Acadamic Semester 6\\Ayurweda Hospital Project\\TaskNest\\TaskNest\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\USER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\wijes\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -22,6 +22,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -34,6 +35,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -92,7 +98,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

@@ -70,6 +70,7 @@ namespace TaskNest
             builder.Services.AddScoped<IHomeService, HomeService>();
             builder.Services.AddScoped<IProjectService,ProjectService>();
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
+            builder.Services.AddScoped<IEditHistoryService, EditHistoryService>();
 
             builder.Services.AddCors(options =>
             {
@@ -269,6 +270,34 @@ namespace TaskNest
                     return Results.Ok(result);
                 }
                 catch (Exception ex) 
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            //...............
+            app.MapPost("/editHistory", async ([FromBody] EditHistoryInfo editHistoryInfo, IEditHistoryService editHistoryService) =>
+            {
+
+                try
+                {
+                    var result = await editHistoryService.AddEditHistory(editHistoryInfo);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapGet("/getEditHistory", async (IEditHistoryService editHistoryService) =>
+            {
+                try
+                {
+                    var result = await editHistoryService.GetAllEditHistory();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
