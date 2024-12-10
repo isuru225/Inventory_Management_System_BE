@@ -106,8 +106,26 @@ namespace TaskNest.Services
             }
         }
 
+        public async Task<RawDrug> GetRawDrugById(string Id) 
+        {
+            try
+            {
+                var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
+                return await _mongoDbService.RawDrugs.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex, "An error occured while getting raw drug document by using Id");
+                throw ex;
+            }
+        }
+
         public async Task<Object> UpdateRawDrug(string Id, Dictionary<string, object> rawDrugUpdatedValues)
         {
+
+            var rawDrug = GetRawDrugById(Id);
+            int? changedAmount = rawDrug?.Result.Amount;
+
             try
             {
                 var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
@@ -156,6 +174,7 @@ namespace TaskNest.Services
                     return new
                     {
                         message = "Document is successfully updated",
+                        rawDrugId = Id,
                         isSuccessful = true,
                     };
                 }
@@ -164,6 +183,7 @@ namespace TaskNest.Services
                     return new
                     {
                         message = "No document matched the ID",
+                        rawDrugId = Id,
                         isSuccessful = false
                     };
                 }
@@ -179,6 +199,38 @@ namespace TaskNest.Services
                     message = "An unexpected error occurred. Please try again later.",
                     isSuccessful = false
                 };
+            }
+        }
+
+        public async Task<object> DeleteRawDrug (string rawDrugId) 
+        {
+            try
+            {
+
+                var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, rawDrugId);
+                var result = await _mongoDbService.RawDrugs.DeleteOneAsync(filter);
+
+                if (result.DeletedCount > 0)
+                {
+                    return new 
+                    { 
+                        Message = "Record deleted successfully.", 
+                        IsSuccessful = true
+                    };
+                }
+                else
+                {
+                    return new 
+                    { 
+                        Message = "No record found with the given Id.", 
+                        IsSuccessful = false
+                    };
+                }
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex,"An error occured while deleting the raw drug record in the DB.");
+                throw ex;
             }
         }
 

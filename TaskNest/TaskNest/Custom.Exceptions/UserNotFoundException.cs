@@ -2,8 +2,24 @@
 {
     public class UserNotFoundException : Exception
     {
-        public UserNotFoundException() : base() { }
-        public UserNotFoundException(string message) : base(message) { }
-        public UserNotFoundException(string message, Exception innerException) : base(message, innerException) { }
+        public int ErrorCode { get; }
+
+        public UserNotFoundException(int errorCode)
+            : base($"An error occurred with code {errorCode}.")
+        {
+            ErrorCode = errorCode;
+        }
+
+        public UserNotFoundException(int errorCode, string message)
+            : base(message)
+        {
+            ErrorCode = errorCode;
+        }
+
+        public UserNotFoundException(int errorCode, string message, Exception inner)
+            : base(message, inner)
+        {
+            ErrorCode = errorCode;
+        }
     }
 }

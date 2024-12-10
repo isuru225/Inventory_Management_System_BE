@@ -12,6 +12,10 @@ using TaskNest.Services;
 using TaskNest.Frontend.Models;
 using TaskNest.Config.Models;
 using System.Reflection.Metadata.Ecma335;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace TaskNest
 {
@@ -58,7 +62,52 @@ namespace TaskNest
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            //JWT Settings
+            //JWT
 
+            var jwtSettings = new JWTSettings();
+            builder.Configuration.Bind("Jwt", jwtSettings);
+
+            // Configure JWTSettings for DI
+            var jwtSection = builder.Configuration.GetSection("Jwt");
+            builder.Services.Configure<JWTSettings>(jwtSection);
+           
+            //////////////////
+            builder.Services.AddAuthentication(a =>
+            {
+                a.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                a.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                a.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+           .AddJwtBearer(options =>
+           {
+               options.SaveToken = true;
+               options.TokenValidationParameters = new TokenValidationParameters
+               {
+                   ValidateIssuerSigningKey = true,
+                   IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSettings.Key ??
+                   throw new InvalidOperationException())),
+                   ValidateIssuer = true,
+                   ValidateAudience = true,
+                   ValidateLifetime = true,
+                   ValidIssuer = jwtSettings.Issuer,
+                   ValidAudience = jwtSettings.Audience,
+                   RequireExpirationTime = false
+               };
+               options.Audience = jwtSettings.Audience;
+               options.ClaimsIssuer = jwtSettings.Issuer;
+               options.Events = new JwtBearerEvents
+               {
+                   OnAuthenticationFailed = context =>
+                   {
+                       if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                       {
+                           context.Response.Headers.Add("Token-Expired", "true");
+                       }
+                       return Task.CompletedTask;
+                   }
+               };
+           });
 
             //register the services
 
@@ -234,7 +283,7 @@ namespace TaskNest
             });
 
             //Raw drug minimal APIs
-            app.MapPost("/addrawdrug", async ([FromBody] RawDrugInfo rawDrugInfo, IRawDrugService rawDrugService) =>
+            app.MapPost("/addrawdrug", [Authorize(Roles ="Admin")] async ([FromBody] RawDrugInfo rawDrugInfo, IRawDrugService rawDrugService) =>
             {
 
                 try
@@ -248,7 +297,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapGet("/getrawdrugs", async (IRawDrugService rawDrugService) => 
+            app.MapGet("/getrawdrugs", [Authorize] async (IRawDrugService rawDrugService) => 
             {
                 try
                 {
@@ -261,11 +310,24 @@ namespace TaskNest
                 }
             });
 
-            app.MapPut("/updaterawdrug/{id}", async (string Id, Dictionary<string, object> updateValues, IRawDrugService rawDrugService) =>
+            app.MapPut("/updaterawdrug/{id}", [Authorize(Roles = "Admin")] async (string Id, Dictionary<string, object> updateValues, IRawDrugService rawDrugService) =>
             {
                 try
                 {
                     var result = await rawDrugService.UpdateRawDrug(Id,updateValues);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex) 
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapDelete("/deleterawdrug/{id}", [Authorize(Roles = "Admin")] async (string Id, IRawDrugService rawDrugService) =>
+            {
+                try
+                {
+                    var result = await rawDrugService.DeleteRawDrug(Id);
                     return Results.Ok(result);
                 }
                 catch (Exception ex) 

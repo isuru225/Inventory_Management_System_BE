@@ -55,3 +55,4 @@ E:\Inventory_Management_System\Inventory_Management_BE\TaskNest\TaskNest\obj\Deb
 E:\Inventory_Management_System\Inventory_Management_BE\TaskNest\TaskNest\obj\Debug\net8.0\TaskNest.pdb
 E:\Inventory_Management_System\Inventory_Management_BE\TaskNest\TaskNest\obj\Debug\net8.0\TaskNest.genruntimeconfig.cache
 E:\Inventory_Management_System\Inventory_Management_BE\TaskNest\TaskNest\obj\Debug\net8.0\ref\TaskNest.dll
+E:\Inventory_Management_System\Inventory_Management_BE\TaskNest\TaskNest\obj\Debug\net8.0\TaskNest.sourcelink.json

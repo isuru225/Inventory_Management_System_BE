@@ -65,7 +65,8 @@ namespace TaskNest.Services
                     if (!isPasswordValid)
                     {
 
-                        throw new InvalidCredentialException("Could not sign in");
+                        throw new InvalidCredentialsException(100,"Password is incorrect"); 
+                 
                     }
                     else
                     {
@@ -99,7 +100,8 @@ namespace TaskNest.Services
                 }
                 else
                 {
-                    throw new UserNotFoundException("Can not find an user by provided email");
+                    throw new UserNotFoundException(101,"Can not find an user by provided email"); 
+      
                 }
             }
             catch (Exception ex)
@@ -235,7 +237,7 @@ namespace TaskNest.Services
                 }
                 else
                 {
-                    throw new UserNotFoundException("Can not find an user by provided email");
+                    throw new UserNotFoundException(101,"Can not find an user by provided email");
                 }
 
                 return employee;

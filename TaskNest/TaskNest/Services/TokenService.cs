@@ -34,7 +34,7 @@ namespace TaskNest.Services
             var token = new JwtSecurityToken(issuer, //Issure    
                             issuer,  //Audience    
                             claims,
-                            expires: DateTime.Now.AddDays(1),
+                            expires: DateTime.Now.AddHours(5),
                             signingCredentials: credentials);
             var jwt_token = new JwtSecurityTokenHandler().WriteToken(token);
             return new TokenResult 
