@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Data;
 
 namespace TaskNest
 {
@@ -71,7 +72,7 @@ namespace TaskNest
             // Configure JWTSettings for DI
             var jwtSection = builder.Configuration.GetSection("Jwt");
             builder.Services.Configure<JWTSettings>(jwtSection);
-           
+
             //////////////////
             builder.Services.AddAuthentication(a =>
             {
@@ -112,12 +113,12 @@ namespace TaskNest
             //register the services
 
             builder.Services.AddScoped<IUserManagementService, UserManagementService>();
-            builder.Services.AddScoped<ITokenService,TokenService>();
+            builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("Jwt"));
             builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IHomeService, HomeService>();
-            builder.Services.AddScoped<IProjectService,ProjectService>();
+            builder.Services.AddScoped<IProjectService, ProjectService>();
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
 
             builder.Services.AddCors(options =>
@@ -179,7 +180,7 @@ namespace TaskNest
                     var result = await userManagementService.Login(userLogin);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -190,10 +191,10 @@ namespace TaskNest
             {
                 try
                 {
-                    var result =  await userManagementService.RegisteredUser(userRegisterInfo); 
+                    var result = await userManagementService.RegisteredUser(userRegisterInfo);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -206,7 +207,7 @@ namespace TaskNest
                     var result = await userManagementService.CreateRole(createRole);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -217,9 +218,9 @@ namespace TaskNest
                 try
                 {
                     var result = await userManagementService.GetEmployeeInfo(email);
-                    return Results.Ok(result);  
+                    return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -234,7 +235,7 @@ namespace TaskNest
                     var result = await homeService.GetAllProjects();
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -247,7 +248,7 @@ namespace TaskNest
                     var result = await adminService.AddProjects(projectInfo);
                     return Results.Ok();
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -276,14 +277,14 @@ namespace TaskNest
                     var result = await projectService.GetProjectSpecificTask(projectId);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
             });
 
             //Raw drug minimal APIs
-            app.MapPost("/addrawdrug", [Authorize(Roles ="Admin")] async ([FromBody] RawDrugInfo rawDrugInfo, IRawDrugService rawDrugService) =>
+            app.MapPost("/addrawdrug", [Authorize(Roles = "Admin")] async ([FromBody] RawDrugInfo rawDrugInfo, IRawDrugService rawDrugService) =>
             {
 
                 try
@@ -297,14 +298,14 @@ namespace TaskNest
                 }
             });
 
-            app.MapGet("/getrawdrugs", [Authorize] async (IRawDrugService rawDrugService) => 
+            app.MapGet("/getrawdrugs", [Authorize] async (IRawDrugService rawDrugService) =>
             {
                 try
                 {
                     var result = await rawDrugService.GetAllRawDrugs();
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -314,10 +315,10 @@ namespace TaskNest
             {
                 try
                 {
-                    var result = await rawDrugService.UpdateRawDrug(Id,updateValues);
+                    var result = await rawDrugService.UpdateRawDrug(Id, updateValues);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
@@ -330,7 +331,22 @@ namespace TaskNest
                     var result = await rawDrugService.DeleteRawDrug(Id);
                     return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            //update the rawdrug inventory through storekeeper
+            app.MapPut("/updaterawdruginventory/{id}", [Authorize(Roles = "Admin")] async (string Id, InventoryUpdate updateValues, IRawDrugService rawDrugService) =>
+            {
+                try
+                {
+                    var result = await rawDrugService.UpdateRawDrugInventory(Id,updateValues);
+                    return Results.Ok(result);
+
+                }
+                catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }

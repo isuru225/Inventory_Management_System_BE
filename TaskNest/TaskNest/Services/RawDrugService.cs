@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDbGenericRepository;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Text.Json;
 using TaskNest.Custom.Exceptions;
 using TaskNest.Frontend.Models;
@@ -124,7 +126,7 @@ namespace TaskNest.Services
         {
 
             var rawDrug = GetRawDrugById(Id);
-            int? changedAmount = rawDrug?.Result.Amount;
+            double? changedAmount = rawDrug?.Result.Amount;
 
             try
             {
@@ -202,6 +204,71 @@ namespace TaskNest.Services
             }
         }
 
+        public async Task<Object> UpdateRawDrugInventory(string Id, InventoryUpdate rawDrugUpdatedValues)
+        {
+
+            var rawDrug = GetRawDrugById(Id);
+            double? changedAmount = rawDrug?.Result.Amount;
+
+            try
+            {
+                var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
+                // Build the update definition dynamically
+                var updateDefinitionBuilder = Builders<RawDrug>.Update;
+
+
+                // Check if the property exists and matches the value
+                PropertyInfo property = rawDrugUpdatedValues?.GetType().GetProperty("Balance");
+                if (property != null)
+                {
+                    double balaceAmount = rawDrugUpdatedValues.Balance;
+                    var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
+                    // Update the raw Drugs Collection
+                    var result = await _mongoDbService.RawDrugs.UpdateOneAsync(filter, update);
+
+                    if (result.ModifiedCount > 0)
+                    {
+                        return new
+                        {
+                            message = "Document is successfully updated",
+                            rawDrugId = Id,
+                            isSuccessful = true,
+                        };
+                    }
+                    else
+                    {
+                        return new
+                        {
+                            message = "No document matched the ID",
+                            rawDrugId = Id,
+                            isSuccessful = false
+                        };
+                    }
+                }
+                else 
+                {
+                    //throw new AttributeNotFoundException("Expected attribute does not exist");
+                    return new
+                    {
+                        message = "Balance is missing in the provided request",
+                        isSuccessful = false
+                    };
+                }
+
+            }
+            catch (Exception ex)
+            {
+                // Log the full error details for debugging
+                _logger.LogError(ex, "An error occurred while updating the given raw drug document");
+
+                // Return a generic error response
+                return new
+                {
+                    message = "An unexpected error occurred. Please try again later.",
+                    isSuccessful = false
+                };
+            }
+        }
         public async Task<object> DeleteRawDrug (string rawDrugId) 
         {
             try
