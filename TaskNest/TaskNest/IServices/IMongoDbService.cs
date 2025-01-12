@@ -9,5 +9,6 @@ namespace TaskNest.IServices
         IMongoCollection<ProjectTask> ProjectTasks { get; }
         IMongoCollection<ApplicationUser> applicationUsers { get; }
         IMongoCollection<RawDrug> RawDrugs { get; }
+        IMongoCollection<History> History { get; }
     }
 }

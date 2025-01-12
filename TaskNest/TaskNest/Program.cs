@@ -120,6 +120,7 @@ namespace TaskNest
             builder.Services.AddScoped<IHomeService, HomeService>();
             builder.Services.AddScoped<IProjectService, ProjectService>();
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
+            builder.Services.AddScoped<IHistoryService, HistoryService>();
 
             builder.Services.AddCors(options =>
             {
@@ -345,6 +346,34 @@ namespace TaskNest
                     var result = await rawDrugService.UpdateRawDrugInventory(Id,updateValues);
                     return Results.Ok(result);
 
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            //get all the history records
+            app.MapGet("/gethistoryrecords", [Authorize(Roles = "Admin")] async (IHistoryService historyService) =>
+            {
+                try
+                {
+                    var result = await historyService.GetAllHistoryRecord();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            //delete a selected history record
+            app.MapDelete("/deletehistoryrecord/{id}", [Authorize(Roles = "Admin")] async (string Id, IHistoryService historyService) =>
+            {
+                try
+                {
+                    var result = await historyService.DeleteHistoryRecord(Id);
+                    return Results.Ok(result);
                 }
                 catch (Exception ex)
                 {

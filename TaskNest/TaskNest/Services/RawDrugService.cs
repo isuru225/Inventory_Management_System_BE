@@ -19,10 +19,12 @@ namespace TaskNest.Services
     {
         private readonly IMongoDbService _mongoDbService;
         private readonly ILogger _logger;
-        public RawDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger) 
+        private IHistoryService _historyService;
+        public RawDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger, IHistoryService historyService) 
         {
             _mongoDbService = mongoDbService;
             _logger = logger;
+            _historyService = historyService;
         }
 
         public async Task<Object> AddNewRawDrug(RawDrugInfo rawDrugInfo)
@@ -228,6 +230,27 @@ namespace TaskNest.Services
 
                     if (result.ModifiedCount > 0)
                     {
+                        //Add history record
+                        HistoryInfo historyInfo = new HistoryInfo();
+                        historyInfo.AdjustedAmount = rawDrugUpdatedValues.AmountAdjusted;
+                        historyInfo.AdjustmentType = rawDrugUpdatedValues.AdjustmentType;
+                        historyInfo.CurrentAmount = rawDrugUpdatedValues.Balance;
+                        historyInfo.InitialAmount = rawDrugUpdatedValues.InitialAmount;
+                        historyInfo.ItemName = rawDrugUpdatedValues.ItemName;
+                        historyInfo.StoreKeeper = rawDrugUpdatedValues.Author;
+                        historyInfo.MeasurementUnit = rawDrugUpdatedValues.MeasurementUnit;
+                        historyInfo.Time = DateTime.UtcNow;
+                        historyInfo.Reason = rawDrugUpdatedValues.Reason;
+
+                        try
+                        {
+                            _historyService.AddHistoryRecord(historyInfo);
+                        }
+                        catch (Exception ex) 
+                        {
+                            throw ex;
+                        }
+
                         return new
                         {
                             message = "Document is successfully updated",
@@ -239,7 +262,7 @@ namespace TaskNest.Services
                     {
                         return new
                         {
-                            message = "No document matched the ID",
+                            message = "Document is not successfully updated",
                             rawDrugId = Id,
                             isSuccessful = false
                         };
