@@ -28,5 +28,7 @@ namespace TaskNest.Services
             _database.GetCollection<RawDrug>("RawDrugs");
         public IMongoCollection<History> History =>
            _database.GetCollection<History>("History");
+        public IMongoCollection<ApplicationRole> applicationRoles =>
+            _database.GetCollection<ApplicationRole>("applicationRoles");
     }
 }

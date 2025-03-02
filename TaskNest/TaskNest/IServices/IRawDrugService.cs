@@ -7,7 +7,7 @@ namespace TaskNest.IServices
     {
         public Task<Object> AddNewRawDrug(RawDrugInfo rawDrugInfo);
         public Task<List<RawDrugInfo>> GetAllRawDrugs();
-        public Task<Object> UpdateRawDrug(string Id, Dictionary<string, object> rawDrugUpdatedValues);
+        public Task<Object> UpdateRawDrug(string Id, RawDrugInfo rawDrugUpdatedValues);
         public Task<RawDrug> GetRawDrugById(string Id);
         public Task<object> DeleteRawDrug(string rawDrugId);
         public Task<Object> UpdateRawDrugInventory(string Id, InventoryUpdate rawDrugUpdatedValues);

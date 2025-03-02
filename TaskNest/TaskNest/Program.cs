@@ -121,6 +121,7 @@ namespace TaskNest
             builder.Services.AddScoped<IProjectService, ProjectService>();
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
             builder.Services.AddScoped<IHistoryService, HistoryService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
 
             builder.Services.AddCors(options =>
             {
@@ -312,11 +313,11 @@ namespace TaskNest
                 }
             });
 
-            app.MapPut("/updaterawdrug/{id}", [Authorize(Roles = "Admin")] async (string Id, Dictionary<string, object> updateValues, IRawDrugService rawDrugService) =>
+            app.MapPut("/updaterawdrug/{id}", [Authorize(Roles = "Admin")] async (string Id, RawDrugInfo updateRawDrugValues, IRawDrugService rawDrugService) =>
             {
                 try
                 {
-                    var result = await rawDrugService.UpdateRawDrug(Id, updateValues);
+                    var result = await rawDrugService.UpdateRawDrug(Id, updateRawDrugValues);
                     return Results.Ok(result);
                 }
                 catch (Exception ex)
@@ -380,6 +381,47 @@ namespace TaskNest
                     return Results.BadRequest(ex);
                 }
             });
+
+            //get all the notifications
+            app.MapGet("/getnotifications", [Authorize]  async (INotificationService notificationService) =>
+            {
+                try
+                {
+                    var result = await notificationService.GetAllNotification();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+            //get all registered users
+            app.MapGet("/getregisteredusers", [Authorize] async (IUserManagementService userManagementService) =>
+            {
+                try
+                {
+                    var result = await userManagementService.GetRegisteredUser();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex) 
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+            //delete a selected registered user record
+            app.MapDelete("/deleteregistereduser/{id}", [Authorize(Roles = "Admin")] async (string Id, IUserManagementService userManagementService) =>
+            {
+                try
+                {
+                    var result = await userManagementService.DeleteRegisteredUser(Id);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
 
             app.Run();
         }

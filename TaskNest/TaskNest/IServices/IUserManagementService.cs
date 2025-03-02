@@ -11,5 +11,7 @@ namespace TaskNest.IServices
         public Task<String> CreateRole(CreateRole createRole);
         public Task<RegisterResponse> RegisteredUser(UserRegisterInfo userRegisterInfo);
         public Task<ApplicationUser> GetEmployeeInfo(string userName);
+        public Task<List<RegisteredUsersInfo>> GetRegisteredUser();
+        public Task<object> DeleteRegisteredUser(String Id);
     }
 }

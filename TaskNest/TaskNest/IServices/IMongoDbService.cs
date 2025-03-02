@@ -10,5 +10,6 @@ namespace TaskNest.IServices
         IMongoCollection<ApplicationUser> applicationUsers { get; }
         IMongoCollection<RawDrug> RawDrugs { get; }
         IMongoCollection<History> History { get; }
+        IMongoCollection<ApplicationRole> applicationRoles { get; }
     }
 }

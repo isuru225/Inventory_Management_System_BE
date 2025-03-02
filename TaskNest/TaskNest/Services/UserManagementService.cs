@@ -1,6 +1,7 @@
 ﻿using Amazon.Runtime.Internal;
 using Amazon.Runtime.Internal.Util;
 using Microsoft.AspNetCore.Identity;
+using MongoDB.Driver;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Authentication;
@@ -21,6 +22,8 @@ namespace TaskNest.Services
         private ITokenService _tokenService;
         private UserManager<ApplicationUser> _userManager;
         private RoleManager<ApplicationRole> _roleManager;
+        private IMongoDbService _mongoDbService;
+
         public UserManagementService
             (
             ILogger<UserManagementService> logger,
@@ -28,7 +31,8 @@ namespace TaskNest.Services
             ITokenService tokenService,
             UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
-            SignInManager<ApplicationUser> signInManager
+            SignInManager<ApplicationUser> signInManager,
+            IMongoDbService mongoDbService
             )
         {
             _logger = logger;
@@ -36,6 +40,7 @@ namespace TaskNest.Services
             _tokenService = tokenService;
             _userManager = userManager;
             _roleManager = roleManager;
+            _mongoDbService = mongoDbService;
         }
 
         public async Task<TokenResult> Login(UserLogin userLogin)
@@ -245,6 +250,122 @@ namespace TaskNest.Services
             catch (Exception ex) 
             {
                 _logger.LogError(ex,"An error occured while getting employee info from Application User");
+                throw ex;
+            }
+        }
+
+        public async Task<List<RegisteredUsersInfo>> GetRegisteredUser() 
+        {
+            try
+            {
+                var filter = Builders<ApplicationUser>.Filter.Empty;
+                var projection = Builders<ApplicationUser>.Projection.Expression(u => new ApplicationUser
+                {
+                    Id = u.Id,
+                    FullName = u.FullName,
+                    Email = u.Email,
+                    PhoneNumber = u.PhoneNumber,
+                    Roles = u.Roles
+                });
+
+                var registeredEmployees = await _mongoDbService.applicationUsers
+                    .Find(filter)
+                    .Project(projection)
+                    .ToListAsync();
+
+
+                try
+                {
+                    var roleList = await getRelevantUserRoleTypes();
+                    List<RegisteredUsersInfo> userRegisterInfos = new List<RegisteredUsersInfo>();
+                    foreach (var registeredEmployee in registeredEmployees)
+                    {
+                        RegisteredUsersInfo registeredUsersInfo = new RegisteredUsersInfo();
+                        registeredUsersInfo.FullName = registeredEmployee.FullName;
+                        registeredUsersInfo.Email = registeredEmployee.Email;
+                        registeredUsersInfo.MobileNumber = registeredEmployee.PhoneNumber;
+                        registeredUsersInfo.Id = registeredEmployee.Id;
+
+                        List<String> roles = new List<String>();
+
+                        foreach (var roleId in registeredEmployee.Roles) 
+                        {
+                            foreach (var role in roleList)
+                            {
+                                if (roleId == role.Id) 
+                                {
+                                    roles.Add(role.Name);
+                                    break;
+                                }
+                            }
+
+                        }
+
+                        registeredUsersInfo.Roles = roles;
+                        userRegisterInfos.Add(registeredUsersInfo);
+                        
+                    }
+
+                    if (registeredEmployees.Count == 0)
+                    {
+                        throw new UserNotFoundException(404, "No registered users available");
+                    }
+
+                    return userRegisterInfos;
+                }
+                catch (Exception ex) 
+                {
+                    throw ex;
+                }
+            }
+            catch (Exception ex) 
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<object> DeleteRegisteredUser(string userId)
+        {
+            try
+            {
+
+                var filter = Builders<ApplicationUser>.Filter.Eq(doc => doc.Id, userId);
+                var result = await _mongoDbService.applicationUsers.DeleteOneAsync(filter);
+
+                if (result.DeletedCount > 0)
+                {
+                    return new
+                    {
+                        Message = "User deleted successfully.",
+                        Success = true
+                    };
+                }
+                else
+                {
+                    return new
+                    {
+                        Message = "No record found with the given Id.",
+                        Success = false
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occured while deleting the history record in the DB.");
+                throw ex;
+            }
+        }
+
+        public async Task<List<ApplicationRole>> getRelevantUserRoleTypes() 
+        {
+            try 
+            {
+                var filter = Builders<ApplicationRole>.Filter.Empty;
+                var result = await _mongoDbService.applicationRoles.Find(filter).ToListAsync();
+                return result;
+            }
+            catch (Exception ex) 
+            {
                 throw ex;
             }
         }
