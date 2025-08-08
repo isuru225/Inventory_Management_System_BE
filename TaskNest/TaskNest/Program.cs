@@ -122,6 +122,8 @@ namespace TaskNest
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
             builder.Services.AddScoped<IHistoryService, HistoryService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IFinishedDrugService, FinishedDrugService>();
+            builder.Services.AddScoped<IGeneralStoreService, GeneralStoreService>();
 
             builder.Services.AddCors(options =>
             {
@@ -354,6 +356,22 @@ namespace TaskNest
                 }
             });
 
+            //update the finisheddrug inventory through storekeeper
+            app.MapPut("/updatefinisheddruginventory/{id}", [Authorize(Roles = "Admin")] async (string Id, InventoryUpdate updateValues, IFinishedDrugService finishedDrugService) =>
+            {
+                try
+                {
+                    var result = await finishedDrugService.UpdateFinishedDrugInventory(Id, updateValues);
+                    return Results.Ok(result);
+
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+
             //get all the history records
             app.MapGet("/gethistoryrecords", [Authorize(Roles = "Admin")] async (IHistoryService historyService) =>
             {
@@ -374,6 +392,117 @@ namespace TaskNest
                 try
                 {
                     var result = await historyService.DeleteHistoryRecord(Id);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+            ////////////////////////
+
+
+
+            //Raw drug minimal APIs
+            app.MapPost("/addfinisheddrug", [Authorize(Roles = "Admin")] async ([FromBody] FinishedDrugInfo finishedDrugInfo, IFinishedDrugService finishedDrugService) =>
+            {
+
+                try
+                {
+                    var result = await finishedDrugService.AddNewFinishedDrug(finishedDrugInfo);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapGet("/getfinisheddrugs", [Authorize] async (IFinishedDrugService finishedDrugService) =>
+            {
+                try
+                {
+                    var result = await finishedDrugService.GetAllFinishedDrugs();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapPut("/updatefinisheddrug/{id}", [Authorize(Roles = "Admin")] async (string Id, FinishedDrugInfo updateFinishedDrugValues, IFinishedDrugService finishedDrugService) =>
+            {
+                try
+                {
+                    var result = await finishedDrugService.UpdateFinishedDrug(Id, updateFinishedDrugValues);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapDelete("/deletefinisheddrug/{id}", [Authorize(Roles = "Admin")] async (string Id, IFinishedDrugService finishedDrugService) =>
+            {
+                try
+                {
+                    var result = await finishedDrugService.DeleteFinishedDrug(Id);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            /////////////////////////////
+            app.MapPost("/addgeneralstoreitem", [Authorize(Roles = "Admin")] async ([FromBody] GeneralStoreItemInfo generalStoreItemInfo, IGeneralStoreService generalStoreService) =>
+            {
+
+                try
+                {
+                    var result = await generalStoreService.AddNewGeneralStoreItem(generalStoreItemInfo);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapGet("/getgeneralstoreitems", [Authorize] async (IGeneralStoreService generalStoreService) =>
+            {
+                try
+                {
+                    var result = await generalStoreService.GetAllGeneralStoreItems();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapPut("/updategeneralstoreitem/{id}", [Authorize(Roles = "Admin")] async (string Id, GeneralStoreItemInfo updateGeneralStoreItemValues, IGeneralStoreService generalStoreService) =>
+            {
+                try
+                {
+                    var result = await generalStoreService.UpdateGeneralStoreItem(Id, updateGeneralStoreItemValues);
+                    return Results.Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapDelete("/deletegeneralstoreitem/{id}", [Authorize(Roles = "Admin")] async (string Id, IGeneralStoreService generalStoreService) =>
+            {
+                try
+                {
+                    var result = await generalStoreService.DeleteGeneralStoreItemDrug(Id);
                     return Results.Ok(result);
                 }
                 catch (Exception ex)

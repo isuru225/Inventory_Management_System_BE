@@ -145,46 +145,6 @@ namespace TaskNest.Services
                     .Set(d => d.MeasurementUnit, rawDrugUpdatedValues.MeasurementUnit);
 
                 var result = await _mongoDbService.RawDrugs.UpdateOneAsync(filter, update);
-                //var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
-                //// Build the update definition dynamically
-                //var updateDefinitionBuilder = Builders<RawDrug>.Update;
-                //var updateDefinition = new List<UpdateDefinition<RawDrug>>();
-
-                //foreach (var entry in rawDrugUpdatedValues)
-                //{
-                //    // Check if the value is a JsonElement
-                //    if (entry.Value is JsonElement jsonElement)
-                //    {
-                //        object convertedValue;
-                //        // Check the value type and convert accordingly
-                //        if (jsonElement.ValueKind == JsonValueKind.Number)
-                //        {
-                //            convertedValue = jsonElement.TryGetInt32(out int intValue) ? intValue : jsonElement.GetDouble();
-                //        }
-                //        else if (jsonElement.ValueKind == JsonValueKind.String)
-                //        {
-                //            convertedValue = jsonElement.GetString();
-                //        }
-                //        else
-                //        {
-                //            convertedValue = JsonSerializer.Deserialize<object>(jsonElement.GetRawText());
-                //        }
-                //        if (convertedValue != null)
-                //        {
-                //            updateDefinition.Add(updateDefinitionBuilder.Set(entry.Key, convertedValue));
-                //        }
-                //    }
-                //    else if (entry.Value != null) // Handle non-JsonElement values
-                //    {
-                //        updateDefinition.Add(updateDefinitionBuilder.Set(entry.Key, entry.Value));
-                //    }
-                //}
-
-                //// Combine all updates into a single update definition
-                //var combinedUpdate = updateDefinitionBuilder.Combine(updateDefinition);
-
-                //// Update the raw Drugs Collection
-                //var result = await _mongoDbService.RawDrugs.UpdateOneAsync(filter, combinedUpdate);
 
                 if (result.ModifiedCount > 0)
                 {
