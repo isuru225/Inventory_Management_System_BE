@@ -1,7 +1,9 @@
-﻿namespace TaskNest.IServices
+﻿using TaskNest.Frontend.Models;
+
+namespace TaskNest.IServices
 {
     public interface INotificationService
     {
-        public Task<List<string>> GetAllNotification();
+        public Task<List<Notification>> GetAllNotification();
     }
 }

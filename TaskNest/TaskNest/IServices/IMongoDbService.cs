@@ -11,5 +11,7 @@ namespace TaskNest.IServices
         IMongoCollection<RawDrug> RawDrugs { get; }
         IMongoCollection<History> History { get; }
         IMongoCollection<ApplicationRole> applicationRoles { get; }
+        IMongoCollection<FinishedDrug> FinishedDrugs { get; }
+        IMongoCollection<GeneralStoreItem> GeneralStoreItems {  get; }
     }
 }
