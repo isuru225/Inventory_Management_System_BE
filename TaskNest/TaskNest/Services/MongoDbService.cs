@@ -31,5 +31,7 @@ namespace TaskNest.Services
             _database.GetCollection<FinishedDrug>("FinishedDrugs");
         public IMongoCollection<GeneralStoreItem> GeneralStoreItems =>
             _database.GetCollection<GeneralStoreItem>("GeneralStoreItems");
+        public IMongoCollection<Notification> Notifications =>
+            _database.GetCollection<Notification>("Notifications");
     }
 }

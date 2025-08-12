@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using System.Collections.Generic;
 using TaskNest.Frontend.Models;
 using TaskNest.IServices;
 using TaskNest.Models;
@@ -9,66 +11,89 @@ namespace TaskNest.Services
     {
         private IMongoDbService _mongoDbService;
         private readonly ILogger _logger;
-        private IRawDrugService _rawDrugService;
-        private IFinishedDrugService _finishedDrugService;
-        public NotificationService(IMongoDbService mongoDbService, ILogger<HomeService> logger, IRawDrugService rawDrugService, IFinishedDrugService finishedDrugService)
+        public NotificationService(IMongoDbService mongoDbService, ILogger<HomeService> logger)
         {
             _mongoDbService = mongoDbService;
             _logger = logger;
-            _rawDrugService = rawDrugService;
-            _finishedDrugService = finishedDrugService;
         }
 
         public async Task<List<Notification>> GetAllNotification()
         {
             try
-            {   
-                List<RawDrugInfo> rawDrugs = new List<RawDrugInfo>();
-                List<FinishedDrugInfo> finishedDrugs = new List<FinishedDrugInfo>();
+            {
+                var filter = Builders<Notification>.Filter.Empty;
+                var result = await _mongoDbService.Notifications.FindAsync(filter);
 
-                List<Notification> notifingDrugItems = new List<Notification>();
-                //list of raw drug names which are having low inventory
-                rawDrugs = await _rawDrugService.GetAllRawDrugs();
-                finishedDrugs = await _finishedDrugService.GetAllFinishedDrugs();
+                //Get all available notifications
+                var allExistingNotifications = await result.ToListAsync();
 
-
-                Notification rawDrugNotification = new Notification();
-                Notification finishedDrugNotification = new Notification();
-                Notification GeneralStoreItemNotification = new Notification();
-
-                //Add notification items to rawDrugNotification
-                rawDrugNotification.ItemType = "raw_drug";
-                // Initialize the item list
-                rawDrugNotification.ItemList = new List<string>();
-                foreach (var rawDrug in rawDrugs) 
-                {
-                    if ((rawDrug.Amount - rawDrug.ReorderPoint) <= 0) 
-                    {
-                        rawDrugNotification.ItemList.Add(rawDrug.ItemName);
-                    }
-                }
-                //Add notification items to finishedDrugNotification
-                finishedDrugNotification.ItemType = "finished_drug";
-                // Initialize the item list
-                finishedDrugNotification.ItemList = new List<string>();
-                foreach (var finishedDrug in finishedDrugs) 
-                {
-                    if ((finishedDrug.Amount - finishedDrug.ReorderPoint) <= 0) 
-                    {
-                        finishedDrugNotification.ItemList.Add(finishedDrug.ItemName);
-                    }
-                }
-
-                notifingDrugItems.Add(rawDrugNotification);
-                notifingDrugItems.Add(finishedDrugNotification);
-
-
-                return notifingDrugItems;
+                return allExistingNotifications;
 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while getting all drug items or general store items");
+                _logger.LogError(ex, "An error occured while getting all notifications");
+                throw ex;
+            }
+        }
+
+        public async Task<Object> AddNotification(NotificationInfo notificationInfo) 
+        {
+            try
+            {
+                //var filter = builders<notification>.filter.empty;
+                //var result = await _mongodbservice.notifications.findasync(filter);
+
+                //var allexisitingnotifications = await result.tolistasync();
+                //allexisitingnotifications.find(x => x.)
+                Notification notification = new Notification();
+                notification.NotificationType = notificationInfo.NotificationType;
+                notification.ItemType = notificationInfo.ItemType;
+                notification.ItemName = notificationInfo.ItemName;
+                notification.CreatedAt = notificationInfo.CreatedAt;
+                notification.Id = ObjectId.GenerateNewId().ToString();
+
+                await _mongoDbService.Notifications.InsertOneAsync(notification);
+                return new
+                {
+                    message = "New notification is successfully added",
+                    isSuccessful = true
+                };
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex, "An error occured while writting data into raw drug collection");
+                throw ex;
+            }
+        }
+
+        public async Task<List<Notification>> UpdateAvailableNotificationAsMarked() 
+        {
+            try
+            {
+                var filter = Builders<Notification>.Filter.Eq(x => x.IsRead, false);
+                var update = Builders<Notification>.Update.Set(x => x.IsRead, true);
+
+                var result = await _mongoDbService.Notifications.UpdateManyAsync(filter,update);
+
+                try
+                {
+
+                    var filterNotification = Builders<Notification>.Filter.Empty;
+                    var resultNotification = await _mongoDbService.Notifications.FindAsync(filterNotification);
+
+                    var updatedNotifications = await resultNotification.ToListAsync();
+
+                    return updatedNotifications;
+                }
+                catch (Exception ex) 
+                {
+                    throw ex;
+                }
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex, "An error occured while updating isRead property of the notification document");
                 throw ex;
             }
         }

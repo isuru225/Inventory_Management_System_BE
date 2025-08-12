@@ -13,5 +13,7 @@ namespace TaskNest.IServices
         public Task<ApplicationUser> GetEmployeeInfo(string userName);
         public Task<List<RegisteredUsersInfo>> GetRegisteredUser();
         public Task<object> DeleteRegisteredUser(String Id);
+        public Task<object> forgotPassword(ForgetPasswordRequest forgetPasswordRequest);
+        public Task<object> resetPassword(ResetPasswordRequest resetPasswordRequest);
     }
 }

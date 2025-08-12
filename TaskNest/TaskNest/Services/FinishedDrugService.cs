@@ -4,6 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Reflection;
 using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
 using TaskNest.IServices;
 using TaskNest.Models;
@@ -17,11 +18,14 @@ namespace TaskNest.Services
         private readonly IMongoDbService _mongoDbService;
         private readonly ILogger _logger;
         private IHistoryService _historyService;
-        public FinishedDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger, IHistoryService historyService)
+        private INotificationService _notificationService;
+
+        public FinishedDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger, IHistoryService historyService, INotificationService notificationService)
         {
             _mongoDbService = mongoDbService;
             _logger = logger;
             _historyService = historyService;
+            _notificationService = notificationService;
         }
 
         public async Task<Object> AddNewFinishedDrug(FinishedDrugInfo finishedDrugInfo)
@@ -209,7 +213,7 @@ namespace TaskNest.Services
                         historyInfo.ItemName = finishedDrugUpdatedValues.ItemName;
                         historyInfo.StoreKeeper = finishedDrugUpdatedValues.Author;
                         historyInfo.MeasurementUnit = finishedDrugUpdatedValues.MeasurementUnit;
-                        historyInfo.Time = DateTime.UtcNow;
+                        historyInfo.Time = DateTime.Now;
                         historyInfo.Reason = finishedDrugUpdatedValues.Reason;
 
                         try
@@ -219,6 +223,25 @@ namespace TaskNest.Services
                         catch (Exception ex)
                         {
                             throw ex;
+                        }
+
+                        //Add a notification if current amount is less than reorder point.
+                        if (finishedDrug?.Result.ReorderPoint > finishedDrugUpdatedValues?.Balance)
+                        {
+                            try
+                            {
+                                NotificationInfo notificationInfo = new NotificationInfo();
+                                notificationInfo.CreatedAt = DateTime.UtcNow;
+                                notificationInfo.NotificationType = (int)NotificationEnum.NOTIFICATION_TYPE_REORDER;
+                                notificationInfo.ItemType = (int)ItemType.FINISHED_DRUG;
+                                notificationInfo.ItemName = finishedDrugUpdatedValues.ItemName;
+
+                                await _notificationService.AddNotification(notificationInfo);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw ex;
+                            }
                         }
 
                         return new

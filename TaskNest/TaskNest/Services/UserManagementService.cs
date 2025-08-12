@@ -1,12 +1,15 @@
 ﻿using Amazon.Runtime.Internal;
 using Amazon.Runtime.Internal.Util;
+using AspNetCore.Identity.MongoDbCore.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using MongoDB.Driver;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Authentication;
 using System.Security.Claims;
 using System.Security.Principal;
+using System.Text;
 using TaskNest.Custom.Exceptions;
 using TaskNest.Frontend.Models;
 using TaskNest.FrontendModels;
@@ -23,6 +26,7 @@ namespace TaskNest.Services
         private UserManager<ApplicationUser> _userManager;
         private RoleManager<ApplicationRole> _roleManager;
         private IMongoDbService _mongoDbService;
+        private IEmailService _emailService;
 
         public UserManagementService
             (
@@ -32,7 +36,8 @@ namespace TaskNest.Services
             UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
             SignInManager<ApplicationUser> signInManager,
-            IMongoDbService mongoDbService
+            IMongoDbService mongoDbService,
+            IEmailService emailService
             )
         {
             _logger = logger;
@@ -41,6 +46,7 @@ namespace TaskNest.Services
             _userManager = userManager;
             _roleManager = roleManager;
             _mongoDbService = mongoDbService;
+            _emailService = emailService;
         }
 
         public async Task<TokenResult> Login(UserLogin userLogin)
@@ -236,13 +242,9 @@ namespace TaskNest.Services
             {
                 var employee = await _userManager.FindByEmailAsync(userName);
 
-                if (employee != null)
+                if (employee == null)
                 {
-
-                }
-                else
-                {
-                    throw new UserNotFoundException(101,"Can not find an user by provided email");
+                    throw new UserNotFoundException(101, "Can not find an user by provided email");
                 }
 
                 return employee;
@@ -368,6 +370,107 @@ namespace TaskNest.Services
             {
                 throw ex;
             }
+        }
+
+        public async Task<object> forgotPassword(ForgetPasswordRequest forgetPasswordRequest) 
+        {
+            try
+            {
+                var employee = await _userManager.FindByEmailAsync(forgetPasswordRequest.Email);
+
+                if (employee == null) 
+                {
+                    throw new UserNotFoundException(101, "Can not find an user by provided email");
+                }
+
+                try
+                {
+                    var passwordResetToken = await _userManager.GeneratePasswordResetTokenAsync(employee);
+
+                    // Encode token for URL
+                    var encodedPasswordResetToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(passwordResetToken));
+
+                    var resetUrl = $"{forgetPasswordRequest.ClientURI}/reset-password?email={Uri.EscapeDataString(forgetPasswordRequest.Email)}&token={encodedPasswordResetToken}";
+
+                    var emailContent = $"Click the following link to reset your password of the Inventory Management System: <a href='{resetUrl}'>Reset Password</a>";
+
+                    try
+                    {
+                        await _emailService.SendEmailAsync(forgetPasswordRequest.Email,"Reset Password", emailContent);
+
+                        return new
+                        {
+                            message = "A password reset email has been sent",
+                            isSuccessful = true
+                        };
+                    }
+                    catch (Exception ex) 
+                    {
+                        _logger.LogError(ex,"An error occured while sending the forgot password email.");
+                        throw ex;
+                    }
+                }
+                catch (Exception ex) 
+                {
+                    _logger.LogError(ex,"An error occured while generating the password reset token");
+                    throw ex;
+                }
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError("An error occured while finding the user by email.");
+                throw ex;
+            }
+        }
+
+        public async Task<object> resetPassword(ResetPasswordRequest resetPasswordRequest) 
+        {
+            try
+            {
+                var employee = await _userManager.FindByEmailAsync(resetPasswordRequest.Email);
+
+                if (employee == null)
+                {
+                    throw new UserNotFoundException(101, "Can not find an user by provided email");
+                }
+
+                try
+                {
+                    // Decode token from URL-safe Base64
+                    var decodedPasswordResetTokenBytes = WebEncoders.Base64UrlDecode(resetPasswordRequest.PasswordResetToken);
+                    var decodedPasswordResetToken = Encoding.UTF8.GetString(decodedPasswordResetTokenBytes);
+
+                    var resetPassResult = await _userManager.ResetPasswordAsync(employee, decodedPasswordResetToken, resetPasswordRequest.NewPassword);
+
+                    if (!resetPassResult.Succeeded)
+                    {
+                        var errors = resetPassResult.Errors.Select(e => e.Description);
+                        return new
+                        {
+                            message = $"Error : {errors}",
+                            isSuccessful = false
+                        };
+                    }
+
+                    return new
+                    {
+                        message = "Password has been reset successfully.",
+                        isSuccessful = true
+                    };
+                }
+                catch (Exception ex) 
+                {
+                    _logger.LogError(ex,"An error occured while resetting the password.");
+                    throw ex;
+                }
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex, "An error occured while finding the user by email.");
+                throw ex;
+            }
+           
+
         }
     }
 }

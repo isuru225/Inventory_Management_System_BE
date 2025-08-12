@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Data;
+using Microsoft.AspNetCore.Identity.Data;
 
 namespace TaskNest
 {
@@ -124,6 +125,7 @@ namespace TaskNest
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IFinishedDrugService, FinishedDrugService>();
             builder.Services.AddScoped<IGeneralStoreService, GeneralStoreService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
 
             builder.Services.AddCors(options =>
             {
@@ -524,6 +526,21 @@ namespace TaskNest
                     return Results.BadRequest(ex);
                 }
             });
+            // update all notifications as marked
+            app.MapPatch("/updatenotificationsasmarked", [Authorize]  async (INotificationService notificationService) => 
+            {
+                try
+                {
+                    var result = await notificationService.UpdateAvailableNotificationAsMarked();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex) 
+                {
+                    return Results.BadRequest(ex);
+                }
+            
+            });
+           
             //get all registered users
             app.MapGet("/getregisteredusers", [Authorize] async (IUserManagementService userManagementService) =>
             {
@@ -537,6 +554,7 @@ namespace TaskNest
                     return Results.BadRequest(ex);
                 }
             });
+            //
             //delete a selected registered user record
             app.MapDelete("/deleteregistereduser/{id}", [Authorize(Roles = "Admin")] async (string Id, IUserManagementService userManagementService) =>
             {
@@ -548,6 +566,18 @@ namespace TaskNest
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
+                }
+            });
+
+            app.MapPost("/login/forgotpassword", async (IUserManagementService userManagementService, ForgetPasswordRequest forgetPasswordRequest) =>
+            {
+                try
+                {
+                    var result = await userManagementService.forgotPassword(forgetPasswordRequest);
+                }
+                catch (Exception ex) 
+                {
+                    Results.BadRequest(ex);
                 }
             });
 
