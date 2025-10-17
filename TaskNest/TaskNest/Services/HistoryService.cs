@@ -91,6 +91,19 @@ namespace TaskNest.Services
         {
             try
             {
+               
+                List<int> numberList = new List<int> { 1,2,3,4,5 };
+
+                foreach (var number in numberList) 
+                {
+                    Console.WriteLine(number);
+                }
+                IEnumerable<int> numbers = numberList;
+
+                while (numbers.GetEnumerator().MoveNext()) 
+                {
+                    Console.WriteLine(numbers.GetEnumerator().Current);
+                }
 
                 var filter = Builders<History>.Filter.Eq(doc => doc.Id, historyRecordId);
                 var result = await _mongoDbService.History.DeleteOneAsync(filter);

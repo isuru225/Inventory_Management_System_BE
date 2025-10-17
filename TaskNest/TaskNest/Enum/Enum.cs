@@ -13,4 +13,10 @@
         FINISHED_DRUG = 1,
         GENERAL = 2
     }
+
+    public enum ErrorCodes : int
+    {
+        INVALID_PASSWORD = 100,
+        INVALID_EMAIL = 101
+    }
 }

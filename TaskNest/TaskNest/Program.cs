@@ -18,6 +18,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Data;
 using Microsoft.AspNetCore.Identity.Data;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Security.Authentication;
+using TaskNest.Custom.Exceptions;
 
 namespace TaskNest
 {
@@ -153,6 +156,11 @@ namespace TaskNest
             // Use the CORS policy
             app.UseCors("AllowFrontend");
 
+            //app.Use(() =>
+            //{
+
+            //});
+
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -186,14 +194,21 @@ namespace TaskNest
                     var result = await userManagementService.Login(userLogin);
                     return Results.Ok(result);
                 }
+                catch (AppException ex) 
+                {
+                    return Results.BadRequest(new 
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
-                    return Results.BadRequest(ex);
+                    return Results.BadRequest(ex); ;
                 }
-
             });
 
-            app.MapPost("/register", async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
+            app.MapPost("/register", [Authorize(Roles = "Admin")] async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -206,7 +221,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapPost("/addrole", async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
+            app.MapPost("/addrole", [Authorize(Roles = "Admin")] async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -375,7 +390,7 @@ namespace TaskNest
 
 
             //get all the history records
-            app.MapGet("/gethistoryrecords", [Authorize(Roles = "Admin")] async (IHistoryService historyService) =>
+            app.MapGet("/gethistoryrecords", [Authorize] async (IHistoryService historyService) =>
             {
                 try
                 {
@@ -542,7 +557,7 @@ namespace TaskNest
             });
            
             //get all registered users
-            app.MapGet("/getregisteredusers", [Authorize] async (IUserManagementService userManagementService) =>
+            app.MapGet("/getregisteredusers", [Authorize(Roles = "Admin")] async (IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -574,13 +589,46 @@ namespace TaskNest
                 try
                 {
                     var result = await userManagementService.forgotPassword(forgetPasswordRequest);
+                    return Results.Ok(result);
                 }
-                catch (Exception ex) 
+                catch (AppException ex) 
                 {
-                    Results.BadRequest(ex);
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message,
+                        isSuccessful = false
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message,
+                        isSuccessful = false
+                    });
                 }
             });
 
+            app.MapPost("/login/resetpassword", async (IUserManagementService userManagementService, ResetPassword resetPassword) =>
+            {
+                try
+                {
+                    var result = await userManagementService.resetPassword(resetPassword);
+                    return Results.Ok(result);
+                }
+                catch (AppException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message,
+                        isSuccessful = false
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
 
             app.Run();
         }

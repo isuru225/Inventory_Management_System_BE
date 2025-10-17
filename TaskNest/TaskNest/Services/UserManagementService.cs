@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Text;
 using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
 using TaskNest.FrontendModels;
 using TaskNest.IServices;
@@ -64,8 +65,7 @@ namespace TaskNest.Services
 
 
             //check whether the user is still exist
-            try
-            {
+          
                 var userExists = await _userManager.FindByEmailAsync(userLogin.UserName);
 
                 if (userExists != null)
@@ -76,7 +76,7 @@ namespace TaskNest.Services
                     if (!isPasswordValid)
                     {
 
-                        throw new InvalidCredentialsException(100,"Password is incorrect"); 
+                        throw new InvalidCredentialsException((int)ErrorCodes.INVALID_PASSWORD,"Password is incorrect"); 
                  
                     }
                     else
@@ -111,17 +111,10 @@ namespace TaskNest.Services
                 }
                 else
                 {
-                    throw new UserNotFoundException(101,"Can not find an user by provided email"); 
+                    throw new UserNotFoundException((int)ErrorCodes.INVALID_EMAIL,"Can not find an user by provided email"); 
       
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while finding user by email");
-                throw ex;
-            }
-
-
+           
         }
 
         public async Task<String> CreateRole(CreateRole createRole)
@@ -390,7 +383,7 @@ namespace TaskNest.Services
                     // Encode token for URL
                     var encodedPasswordResetToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(passwordResetToken));
 
-                    var resetUrl = $"{forgetPasswordRequest.ClientURI}/reset-password?email={Uri.EscapeDataString(forgetPasswordRequest.Email)}&token={encodedPasswordResetToken}";
+                    var resetUrl = $"{forgetPasswordRequest.ClientURI}/resetpassword?email={Uri.EscapeDataString(forgetPasswordRequest.Email)}&token={encodedPasswordResetToken}";
 
                     var emailContent = $"Click the following link to reset your password of the Inventory Management System: <a href='{resetUrl}'>Reset Password</a>";
 
@@ -418,16 +411,16 @@ namespace TaskNest.Services
             }
             catch (Exception ex) 
             {
-                _logger.LogError("An error occured while finding the user by email.");
+                _logger.LogError(ex,"An error occured while finding the user by email.");
                 throw ex;
             }
         }
 
-        public async Task<object> resetPassword(ResetPasswordRequest resetPasswordRequest) 
+        public async Task<object> resetPassword(ResetPassword resetPassword) 
         {
             try
             {
-                var employee = await _userManager.FindByEmailAsync(resetPasswordRequest.Email);
+                var employee = await _userManager.FindByEmailAsync(resetPassword.Email);
 
                 if (employee == null)
                 {
@@ -437,10 +430,10 @@ namespace TaskNest.Services
                 try
                 {
                     // Decode token from URL-safe Base64
-                    var decodedPasswordResetTokenBytes = WebEncoders.Base64UrlDecode(resetPasswordRequest.PasswordResetToken);
+                    var decodedPasswordResetTokenBytes = WebEncoders.Base64UrlDecode(resetPassword.PasswordResetToken);
                     var decodedPasswordResetToken = Encoding.UTF8.GetString(decodedPasswordResetTokenBytes);
 
-                    var resetPassResult = await _userManager.ResetPasswordAsync(employee, decodedPasswordResetToken, resetPasswordRequest.NewPassword);
+                    var resetPassResult = await _userManager.ResetPasswordAsync(employee, decodedPasswordResetToken, resetPassword.NewPassword);
 
                     if (!resetPassResult.Succeeded)
                     {
