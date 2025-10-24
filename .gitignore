@@ -1,0 +1,54 @@
+# -------------------------------
+# ASP.NET Core / .NET
+# -------------------------------
+bin/
+obj/
+out/
+publish/
+*.dll
+*.exe
+*.pdb
+*.app
+*.log
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+*.vs/
+.vscode/
+
+# Rider
+.idea/
+
+# -------------------------------
+# Node / React
+# -------------------------------
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+build/
+dist/
+.env
+
+# -------------------------------
+# Secrets / Configuration
+# -------------------------------
+appsettings.Development.json
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# -------------------------------
+# Others / Temp
+# -------------------------------
+*.tmp
+*.bak
+*.swp
+*.DS_Store

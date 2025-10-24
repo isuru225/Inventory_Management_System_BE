@@ -169,7 +169,7 @@ namespace TaskNest
                 "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
             };
 
-            app.MapGet("/hello", () => "Hello World!");
+            app.MapGet("/", () => "AyurVault Backend is up and running!");
 
             app.MapGet("/weatherforecast", (HttpContext httpContext) =>
             {
