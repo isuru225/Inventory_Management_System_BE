@@ -6,6 +6,7 @@ using System.Reflection;
 using TaskNest.Custom.Exceptions;
 using TaskNest.Enum;
 using TaskNest.Frontend.Models;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -30,53 +31,60 @@ namespace TaskNest.Services
 
         public async Task<Object> AddNewFinishedDrug(FinishedDrugInfo finishedDrugInfo)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(finishedDrugInfo);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+            //check that the entered finish drug item is already exists in the db.
+            FinishedDrug alreadyExistingfinishedDrug = null;
+
             try
             {
-
                 var filter = Builders<FinishedDrug>.Filter.Empty;  // Fetch all documents
                 var result = await _mongoDbService.FinishedDrugs.FindAsync(filter);  // Get async cursor
-
                 var allExistingFinishedDrugs = await result.ToListAsync();
-
-                var duplicateValue = allExistingFinishedDrugs.Find(x => x.ItemName == finishedDrugInfo.ItemName);
-
-                if (duplicateValue != null)
-                {
-                    throw new DuplicateValueException("Finished drug name already exists");
-                }
-                else
-                {
-                    try
-                    {
-                        //create new raw drug instance
-                        FinishedDrug finishedDrug = new FinishedDrug();
-                        finishedDrug.Amount = finishedDrugInfo.Amount;
-                        finishedDrug.ItemName = finishedDrugInfo.ItemName;
-                        finishedDrug.MeasurementUnit = finishedDrugInfo.MeasurementUnit;
-                        finishedDrug.ExpirationDate = finishedDrugInfo.ExpirationDate;
-                        finishedDrug.Category = finishedDrugInfo.Category;
-                        finishedDrug.ReorderPoint = finishedDrugInfo.ReorderPoint;
-                        finishedDrug.Id = ObjectId.GenerateNewId().ToString();
-                            
-                        await _mongoDbService.FinishedDrugs.InsertOneAsync(finishedDrug);
-                        return new
-                        {
-                            message = "New finished drug is successfully added",
-                            isSuccessful = true
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "An error occured while writting data into finished drug collection");
-                        throw ex;
-                    }
-                }
+                alreadyExistingfinishedDrug = allExistingFinishedDrugs.Find(x => x.ItemName == finishedDrugInfo.ItemName);
 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while getting drug infos from the finished drug collection");
-                throw ex;
+                _logger.LogError(ex, "An error occured while getting the available finished drugs from the db.");
+                throw;
+            }
+
+            if (alreadyExistingfinishedDrug != null)
+            {
+                throw new DuplicateValueException((int)ErrorCodes.DUPLICATE_VALUES, "Finished drug name already exists");
+            }
+            else
+            {
+                try
+                {
+                    //create new raw drug instance
+                    FinishedDrug finishedDrug = new FinishedDrug();
+                    finishedDrug.Amount = finishedDrugInfo.Amount;
+                    finishedDrug.ItemName = finishedDrugInfo.ItemName;
+                    finishedDrug.MeasurementUnit = finishedDrugInfo.MeasurementUnit;
+                    finishedDrug.ExpirationDate = finishedDrugInfo.ExpirationDate;
+                    finishedDrug.Category = finishedDrugInfo.Category;
+                    finishedDrug.ReorderPoint = finishedDrugInfo.ReorderPoint;
+                    finishedDrug.Id = ObjectId.GenerateNewId().ToString();
+
+                    await _mongoDbService.FinishedDrugs.InsertOneAsync(finishedDrug);
+                    return new
+                    {
+                        message = "New finished drug is successfully added",
+                        isSuccessful = true
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occured while writting data into finished drug db collection");
+                    throw;
+                }
             }
         }
 
@@ -109,7 +117,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting data from the finisheddrugs collection");
-                throw ex;
+                throw;
             }
         }
 
@@ -123,15 +131,20 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting finished drug document by using Id");
-                throw ex;
+                throw;
             }
         }
 
         public async Task<Object> UpdateFinishedDrug(string Id, FinishedDrugInfo finishedDrugUpdatedValues)
         {
 
-            //var rawDrug = GetRawDrugById(Id);
-            //double? changedAmount = rawDrug?.Result.Amount;
+            var (isValid, errors) = ValidationHelper.ValidateObject(finishedDrugUpdatedValues);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
 
             try
             {
@@ -183,107 +196,120 @@ namespace TaskNest.Services
         public async Task<Object> UpdateFinishedDrugInventory(string Id, InventoryUpdate finishedDrugUpdatedValues)
         {
 
+            var (isValid, errors) = ValidationHelper.ValidateObject(finishedDrugUpdatedValues);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+
             var finishedDrug = GetFinishedDrugById(Id);
             double? changedAmount = finishedDrug?.Result.Amount;
 
-            try
+         
+            var filter = Builders<FinishedDrug>.Filter.Eq(doc => doc.Id, Id);
+            // Build the update definition dynamically
+            var updateDefinitionBuilder = Builders<FinishedDrug>.Update;
+
+
+            // Check if the property exists and matches the value
+            PropertyInfo property = finishedDrugUpdatedValues?.GetType().GetProperty("Balance");
+            if (property != null)
             {
-                var filter = Builders<FinishedDrug>.Filter.Eq(doc => doc.Id, Id);
-                // Build the update definition dynamically
-                var updateDefinitionBuilder = Builders<FinishedDrug>.Update;
+                double balaceAmount = finishedDrugUpdatedValues.Balance;
+                var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
+                
+                // store the result of the updating process
+                UpdateResult result;
 
-
-                // Check if the property exists and matches the value
-                PropertyInfo property = finishedDrugUpdatedValues?.GetType().GetProperty("Balance");
-                if (property != null)
+                try
                 {
-                    double balaceAmount = finishedDrugUpdatedValues.Balance;
-                    var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
                     // Update the raw Drugs Collection
-                    var result = await _mongoDbService.FinishedDrugs.UpdateOneAsync(filter, update);
-
-                    if (result.ModifiedCount > 0)
-                    {
-                        //Add history record
-                        HistoryInfo historyInfo = new HistoryInfo();
-                        historyInfo.AdjustedAmount = finishedDrugUpdatedValues.AmountAdjusted;
-                        historyInfo.AdjustmentType = finishedDrugUpdatedValues.AdjustmentType;
-                        historyInfo.CurrentAmount = finishedDrugUpdatedValues.Balance;
-                        historyInfo.InitialAmount = finishedDrugUpdatedValues.InitialAmount;
-                        historyInfo.ItemName = finishedDrugUpdatedValues.ItemName;
-                        historyInfo.StoreKeeper = finishedDrugUpdatedValues.Author;
-                        historyInfo.MeasurementUnit = finishedDrugUpdatedValues.MeasurementUnit;
-                        historyInfo.Time = DateTime.Now;
-                        historyInfo.Reason = finishedDrugUpdatedValues.Reason;
-
-                        try
-                        {
-                            _historyService.AddHistoryRecord(historyInfo);
-                        }
-                        catch (Exception ex)
-                        {
-                            throw ex;
-                        }
-
-                        //Add a notification if current amount is less than reorder point.
-                        if (finishedDrug?.Result.ReorderPoint > finishedDrugUpdatedValues?.Balance)
-                        {
-                            try
-                            {
-                                NotificationInfo notificationInfo = new NotificationInfo();
-                                notificationInfo.CreatedAt = DateTime.UtcNow;
-                                notificationInfo.NotificationType = (int)NotificationEnum.NOTIFICATION_TYPE_REORDER;
-                                notificationInfo.ItemType = (int)ItemType.FINISHED_DRUG;
-                                notificationInfo.ItemName = finishedDrugUpdatedValues.ItemName;
-
-                                await _notificationService.AddNotification(notificationInfo);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw ex;
-                            }
-                        }
-
-                        return new
-                        {
-                            message = "Document is successfully updated",
-                            finishedDrugId = Id,
-                            isSuccessful = true,
-                        };
-                    }
-                    else
-                    {
-                        return new
-                        {
-                            message = "Document is not successfully updated",
-                            finishedDrugId = Id,
-                            isSuccessful = false
-                        };
-                    }
+                    result = await _mongoDbService.FinishedDrugs.UpdateOneAsync(filter, update);
                 }
-                else
+                catch (Exception ex)
                 {
-                    //throw new AttributeNotFoundException("Expected attribute does not exist");
+                    // Log the full error details for debugging
+                    _logger.LogError(ex, "An error occurred while updating the given finished drug document");
+
+                    // Return a generic error response
                     return new
                     {
-                        message = "Balance is missing in the provided request",
+                        message = "An unexpected error occurred. Please try again later.",
                         isSuccessful = false
                     };
                 }
 
-            }
-            catch (Exception ex)
-            {
-                // Log the full error details for debugging
-                _logger.LogError(ex, "An error occurred while updating the given finished drug document");
+                if (result.ModifiedCount > 0)
+                {
+                    //Add history record
+                    HistoryInfo historyInfo = new HistoryInfo();
+                    historyInfo.AdjustedAmount = finishedDrugUpdatedValues.AmountAdjusted;
+                    historyInfo.AdjustmentType = finishedDrugUpdatedValues.AdjustmentType;
+                    historyInfo.CurrentAmount = finishedDrugUpdatedValues.Balance;
+                    historyInfo.InitialAmount = finishedDrugUpdatedValues.InitialAmount;
+                    historyInfo.ItemName = finishedDrugUpdatedValues.ItemName;
+                    historyInfo.StoreKeeper = finishedDrugUpdatedValues.Author;
+                    historyInfo.MeasurementUnit = finishedDrugUpdatedValues.MeasurementUnit;
+                    historyInfo.Time = DateTime.Now;
+                    historyInfo.Reason = finishedDrugUpdatedValues.Reason;
 
-                // Return a generic error response
+                    try
+                    {
+                        await _historyService.AddHistoryRecord(historyInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw;
+                    }
+
+                    //Add a notification if current amount is less than reorder point.
+                    if (finishedDrug?.Result.ReorderPoint > finishedDrugUpdatedValues?.Balance)
+                    {
+                        try
+                        {
+                            NotificationInfo notificationInfo = new NotificationInfo();
+                            notificationInfo.CreatedAt = DateTime.UtcNow;
+                            notificationInfo.NotificationType = (int)NotificationEnum.NOTIFICATION_TYPE_REORDER;
+                            notificationInfo.ItemType = (int)ItemType.FINISHED_DRUG;
+                            notificationInfo.ItemName = finishedDrugUpdatedValues.ItemName;
+
+                            await _notificationService.AddNotification(notificationInfo);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw;
+                        }
+                    }
+
+                    return new
+                    {
+                        message = "Document is successfully updated",
+                        finishedDrugId = Id,
+                        isSuccessful = true,
+                    };
+                }
+                else
+                {
+                    return new
+                    {
+                        message = "Document is not successfully updated",
+                        finishedDrugId = Id,
+                        isSuccessful = false
+                    };
+                }
+            }
+            else
+            {
+                //throw new AttributeNotFoundException("Expected attribute does not exist");
                 return new
                 {
-                    message = "An unexpected error occurred. Please try again later.",
+                    message = "Balance is missing in the provided request",
                     isSuccessful = false
                 };
             }
+
         }
         public async Task<object> DeleteFinishedDrug(string finishedDrugId)
         {
@@ -313,7 +339,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while deleting the finished drug record in the DB.");
-                throw ex;
+                throw;
             }
         }
     }

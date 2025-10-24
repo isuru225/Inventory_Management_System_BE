@@ -194,9 +194,25 @@ namespace TaskNest
                     var result = await userManagementService.Login(userLogin);
                     return Results.Ok(result);
                 }
-                catch (AppException ex) 
+                catch (InvalidRequestedDataException ex) 
                 {
-                    return Results.BadRequest(new 
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (InvalidCredentialsException ex)
+                {
+                    return Results.BadRequest(new
                     {
                         Message = ex.Message,
                         ErrorCode = ex.ErrorCode
@@ -215,6 +231,14 @@ namespace TaskNest
                     var result = await userManagementService.RegisteredUser(userRegisterInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -227,6 +251,14 @@ namespace TaskNest
                 {
                     var result = await userManagementService.CreateRole(createRole);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -313,6 +345,22 @@ namespace TaskNest
                     var result = await rawDrugService.AddNewRawDrug(rawDrugInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (DuplicateValueException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -338,6 +386,14 @@ namespace TaskNest
                 {
                     var result = await rawDrugService.UpdateRawDrug(Id, updateRawDrugValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -367,6 +423,14 @@ namespace TaskNest
                     return Results.Ok(result);
 
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -381,6 +445,14 @@ namespace TaskNest
                     var result = await finishedDrugService.UpdateFinishedDrugInventory(Id, updateValues);
                     return Results.Ok(result);
 
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -429,6 +501,22 @@ namespace TaskNest
                     var result = await finishedDrugService.AddNewFinishedDrug(finishedDrugInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (DuplicateValueException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -454,6 +542,14 @@ namespace TaskNest
                 {
                     var result = await finishedDrugService.UpdateFinishedDrug(Id, updateFinishedDrugValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -483,6 +579,14 @@ namespace TaskNest
                     var result = await generalStoreService.AddNewGeneralStoreItem(generalStoreItemInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -508,6 +612,14 @@ namespace TaskNest
                 {
                     var result = await generalStoreService.UpdateGeneralStoreItem(Id, updateGeneralStoreItemValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -591,12 +703,20 @@ namespace TaskNest
                     var result = await userManagementService.forgotPassword(forgetPasswordRequest);
                     return Results.Ok(result);
                 }
-                catch (AppException ex) 
+                catch (InvalidRequestedDataException ex)
                 {
                     return Results.BadRequest(new
                     {
-                        message = ex.Message,
-                        isSuccessful = false
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
                     });
                 }
                 catch (Exception ex)
@@ -616,12 +736,20 @@ namespace TaskNest
                     var result = await userManagementService.resetPassword(resetPassword);
                     return Results.Ok(result);
                 }
-                catch (AppException ex)
+                catch (InvalidRequestedDataException ex)
                 {
                     return Results.BadRequest(new
                     {
-                        message = ex.Message,
-                        isSuccessful = false
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
                     });
                 }
                 catch (Exception ex)

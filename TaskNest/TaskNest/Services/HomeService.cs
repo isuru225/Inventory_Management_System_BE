@@ -25,7 +25,7 @@ namespace TaskNest.Services
             catch (Exception ex) 
             {
                 _logger.LogError(ex,"An error occured while getting all the available projects.");
-                throw ex;
+                throw;
             }
         }
     }

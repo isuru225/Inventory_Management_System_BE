@@ -1,8 +1,15 @@
 ﻿namespace TaskNest.Custom.Exceptions
 {
-    public class InvalidCredentialsException : AppException
+    public class InvalidCredentialsException : Exception
     {
-        public InvalidCredentialsException(int errorCode, string message)
-        : base(errorCode, message) { }
+        public int ErrorCode { get; }   // Custom error code
+        public string Errors { get; }
+
+        public InvalidCredentialsException(int errorCode, string errors)
+            : base("Password is incorrect!")
+        {
+            ErrorCode = errorCode;
+            Errors = errors;
+        }
     }
 }

@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Reflection;
 using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -26,49 +29,55 @@ namespace TaskNest.Services
 
         public async Task<Object> AddNewGeneralStoreItem(GeneralStoreItemInfo generalStoreItemInfo)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(generalStoreItemInfo);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+            GeneralStoreItem alreadyExistingRawDrug = null;
+
             try
             {
-
                 var filter = Builders<GeneralStoreItem>.Filter.Empty;  // Fetch all documents
                 var result = await _mongoDbService.GeneralStoreItems.FindAsync(filter);  // Get async cursor
-
                 var allExistingGeneralStoreItems = await result.ToListAsync();
 
-                var duplicateValue = allExistingGeneralStoreItems.Find(x => x.ItemName == generalStoreItemInfo.ItemName);
-
-                if (duplicateValue != null)
-                {
-                    throw new DuplicateValueException("Finished drug name already exists");
-                }
-                else
-                {
-                    try
-                    {
-                        //create new raw drug instance
-                        GeneralStoreItem generalStoreItem = new GeneralStoreItem();
-                        generalStoreItem.Amount = generalStoreItemInfo.Amount;
-                        generalStoreItem.ItemName = generalStoreItemInfo.ItemName;
-                        generalStoreItem.Id = ObjectId.GenerateNewId().ToString();
-
-                        await _mongoDbService.GeneralStoreItems.InsertOneAsync(generalStoreItem);
-                        return new
-                        {
-                            message = "New general store item is successfully added",
-                            isSuccessful = true
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "An error occured while writting data into general store item collection");
-                        throw ex;
-                    }
-                }
-
+                alreadyExistingRawDrug = allExistingGeneralStoreItems.Find(x => x.ItemName == generalStoreItemInfo.ItemName);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting drug infos from the general store item collection");
-                throw ex;
+                throw;
+            }
+
+            if (alreadyExistingRawDrug != null)
+            {
+                throw new DuplicateValueException((int)ErrorCodes.DUPLICATE_VALUES, "General store item is already exists");
+            }
+            else
+            {
+                try
+                {
+                    //create new raw drug instance
+                    GeneralStoreItem generalStoreItem = new GeneralStoreItem();
+                    generalStoreItem.Amount = generalStoreItemInfo.Amount;
+                    generalStoreItem.ItemName = generalStoreItemInfo.ItemName;
+                    generalStoreItem.Id = ObjectId.GenerateNewId().ToString();
+
+                    await _mongoDbService.GeneralStoreItems.InsertOneAsync(generalStoreItem);
+                    return new
+                    {
+                        message = "New general store item is successfully added",
+                        isSuccessful = true
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occured while writting data into general store item collection");
+                    throw;
+                }
             }
         }
 
@@ -97,7 +106,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting data from the general store item collection");
-                throw ex;
+                throw;
             }
         }
 
@@ -111,15 +120,19 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting general store item document by using Id");
-                throw ex;
+                throw;
             }
         }
 
         public async Task<Object> UpdateGeneralStoreItem(string Id, GeneralStoreItemInfo generalStoreItemUpdatedValues)
         {
 
-            //var rawDrug = GetRawDrugById(Id);
-            //double? changedAmount = rawDrug?.Result.Amount;
+            var (isValid, errors) = ValidationHelper.ValidateObject(generalStoreItemUpdatedValues);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
 
             try
             {
@@ -167,85 +180,95 @@ namespace TaskNest.Services
         public async Task<Object> UpdateGeneralStoreInventory(string Id, InventoryUpdate generalStoreItemUpdatedValues)
         {
 
+            var (isValid, errors) = ValidationHelper.ValidateObject(generalStoreItemUpdatedValues);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
             var generalStoreItem = GetGeneralStoreItemById(Id);
             double? changedAmount = generalStoreItem?.Result.Amount;
 
-            try
+
+            var filter = Builders<GeneralStoreItem>.Filter.Eq(doc => doc.Id, Id);
+            // Build the update definition dynamically
+            var updateDefinitionBuilder = Builders<GeneralStoreItem>.Update;
+
+
+            // Check if the property exists and matches the value
+            PropertyInfo property = generalStoreItemUpdatedValues?.GetType().GetProperty("Balance");
+            if (property != null)
             {
-                var filter = Builders<GeneralStoreItem>.Filter.Eq(doc => doc.Id, Id);
-                // Build the update definition dynamically
-                var updateDefinitionBuilder = Builders<GeneralStoreItem>.Update;
+                double balaceAmount = generalStoreItemUpdatedValues.Balance;
+                var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
 
-
-                // Check if the property exists and matches the value
-                PropertyInfo property = generalStoreItemUpdatedValues?.GetType().GetProperty("Balance");
-                if (property != null)
+                UpdateResult result;
+                try
                 {
-                    double balaceAmount = generalStoreItemUpdatedValues.Balance;
-                    var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
-                    // Update the raw Drugs Collection
-                    var result = await _mongoDbService.GeneralStoreItems.UpdateOneAsync(filter, update);
-
-                    if (result.ModifiedCount > 0)
-                    {
-                        //Add history record
-                        HistoryInfo historyInfo = new HistoryInfo();
-                        historyInfo.AdjustedAmount = generalStoreItemUpdatedValues.AmountAdjusted;
-                        historyInfo.AdjustmentType = generalStoreItemUpdatedValues.AdjustmentType;
-                        historyInfo.CurrentAmount = generalStoreItemUpdatedValues.Balance;
-                        historyInfo.InitialAmount = generalStoreItemUpdatedValues.InitialAmount;
-                        historyInfo.ItemName = generalStoreItemUpdatedValues.ItemName;
-                        historyInfo.StoreKeeper = generalStoreItemUpdatedValues.Author;
-                        historyInfo.MeasurementUnit = generalStoreItemUpdatedValues.MeasurementUnit;
-                        historyInfo.Time = DateTime.UtcNow;
-                        historyInfo.Reason = generalStoreItemUpdatedValues.Reason;
-
-                        try
-                        {
-                            _historyService.AddHistoryRecord(historyInfo);
-                        }
-                        catch (Exception ex)
-                        {
-                            throw ex;
-                        }
-
-                        return new
-                        {
-                            message = "Document is successfully updated",
-                            generalStoreId = Id,
-                            isSuccessful = true,
-                        };
-                    }
-                    else
-                    {
-                        return new
-                        {
-                            message = "Document is not successfully updated",
-                            generalStoreId = Id,
-                            isSuccessful = false
-                        };
-                    }
+                    //// Update the raw Drugs Collection
+                    result = await _mongoDbService.GeneralStoreItems.UpdateOneAsync(filter, update);
                 }
-                else
+                catch (Exception ex)
                 {
-                    //throw new AttributeNotFoundException("Expected attribute does not exist");
+                    // Log the full error details for debugging
+                    _logger.LogError(ex, "An error occurred while updating the given general store item document");
+
+                    // Return a generic error response
                     return new
                     {
-                        message = "Balance is missing in the provided request",
+                        message = "An unexpected error occurred. Please try again later.",
                         isSuccessful = false
                     };
                 }
 
-            }
-            catch (Exception ex)
-            {
-                // Log the full error details for debugging
-                _logger.LogError(ex, "An error occurred while updating the given general store item document");
+                if (result.ModifiedCount > 0)
+                {
+                    //Add history record
+                    HistoryInfo historyInfo = new HistoryInfo();
+                    historyInfo.AdjustedAmount = generalStoreItemUpdatedValues.AmountAdjusted;
+                    historyInfo.AdjustmentType = generalStoreItemUpdatedValues.AdjustmentType;
+                    historyInfo.CurrentAmount = generalStoreItemUpdatedValues.Balance;
+                    historyInfo.InitialAmount = generalStoreItemUpdatedValues.InitialAmount;
+                    historyInfo.ItemName = generalStoreItemUpdatedValues.ItemName;
+                    historyInfo.StoreKeeper = generalStoreItemUpdatedValues.Author;
+                    historyInfo.MeasurementUnit = generalStoreItemUpdatedValues.MeasurementUnit;
+                    historyInfo.Time = DateTime.UtcNow;
+                    historyInfo.Reason = generalStoreItemUpdatedValues.Reason;
 
-                // Return a generic error response
+                    try
+                    {
+                        await _historyService.AddHistoryRecord(historyInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occured while adding a history record from general store inventory updating process");
+                        throw;
+                    }
+
+                    return new
+                    {
+                        message = "Document is successfully updated",
+                        generalStoreId = Id,
+                        isSuccessful = true,
+                    };
+                }
+                else
+                {
+                    return new
+                    {
+                        message = "Document is not successfully updated",
+                        generalStoreId = Id,
+                        isSuccessful = false
+                    };
+                }
+            }
+            else
+            {
+                //throw new AttributeNotFoundException("Expected attribute does not exist");
                 return new
                 {
-                    message = "An unexpected error occurred. Please try again later.",
+                    message = "Balance is missing in the provided request",
                     isSuccessful = false
                 };
             }
@@ -278,7 +301,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while deleting the general store item record in the DB.");
-                throw ex;
+                throw;
             }
         }
     }

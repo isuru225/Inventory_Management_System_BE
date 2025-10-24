@@ -1,8 +1,15 @@
 ﻿namespace TaskNest.Custom.Exceptions
 {
-    public class UserNotFoundException : AppException
+    public class UserNotFoundException : Exception
     {
-        public UserNotFoundException(int errorCode, string message)
-       : base(errorCode, message) { }
+        public int ErrorCode { get; }   // Custom error code
+        public string Errors { get; }
+
+        public UserNotFoundException(int errorCode, string errors)
+            : base("User not found!")
+        {
+            ErrorCode = errorCode;
+            Errors = errors;
+        }
     }
 }

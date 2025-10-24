@@ -1,7 +1,10 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Collections.Generic;
+using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -33,12 +36,18 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting all notifications");
-                throw ex;
+                throw;
             }
         }
 
         public async Task<Object> AddNotification(NotificationInfo notificationInfo) 
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(notificationInfo);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
             try
             {
                 //var filter = builders<notification>.filter.empty;
@@ -63,7 +72,7 @@ namespace TaskNest.Services
             catch (Exception ex) 
             {
                 _logger.LogError(ex, "An error occured while writting data into raw drug collection");
-                throw ex;
+                throw;
             }
         }
 
@@ -88,13 +97,13 @@ namespace TaskNest.Services
                 }
                 catch (Exception ex) 
                 {
-                    throw ex;
+                    throw;
                 }
             }
             catch (Exception ex) 
             {
                 _logger.LogError(ex, "An error occured while updating isRead property of the notification document");
-                throw ex;
+                throw;
             }
         }
     }
