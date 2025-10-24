@@ -7,7 +7,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
+using TaskNest.FrontendModels;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -20,66 +23,78 @@ namespace TaskNest.Services
         private readonly IMongoDbService _mongoDbService;
         private readonly ILogger _logger;
         private IHistoryService _historyService;
-        public RawDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger, IHistoryService historyService) 
+        private INotificationService _notificationService;
+        public RawDrugService(IMongoDbService mongoDbService, ILogger<RawDrugService> logger, IHistoryService historyService, INotificationService notificationService)
         {
             _mongoDbService = mongoDbService;
             _logger = logger;
             _historyService = historyService;
+            _notificationService = notificationService;
         }
 
         public async Task<Object> AddNewRawDrug(RawDrugInfo rawDrugInfo)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(rawDrugInfo);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+            RawDrug alreadyExistingRawDrug = null;
+
             try
             {
-
                 var filter = Builders<RawDrug>.Filter.Empty;  // Fetch all documents
                 var result = await _mongoDbService.RawDrugs.FindAsync(filter);  // Get async cursor
 
                 var allExistingRawDrugs = await result.ToListAsync();
 
-                var duplicateValue = allExistingRawDrugs.Find(x => x.ItemName == rawDrugInfo.ItemName);
-
-                if (duplicateValue != null)
-                {
-                    throw new DuplicateValueException("Raw drug name already exists");
-                }
-                else 
-                {
-                    try
-                    {
-                        //create new raw drug instance
-                        RawDrug rawDrug = new RawDrug();
-                        rawDrug.Amount = rawDrugInfo.Amount;
-                        rawDrug.ItemName = rawDrugInfo.ItemName;
-                        rawDrug.MeasurementUnit = rawDrugInfo.MeasurementUnit;
-                        rawDrug.ExpirationDate = rawDrugInfo.ExpirationDate;
-                        rawDrug.Category = rawDrugInfo.Category;
-                        rawDrug.ReorderPoint = rawDrugInfo.ReorderPoint;
-                        rawDrug.Id = ObjectId.GenerateNewId().ToString();
-
-                        await _mongoDbService.RawDrugs.InsertOneAsync(rawDrug);
-                        return new
-                        {
-                            message = "New raw drug is successfully added",
-                            isSuccessful = true
-                        };
-                    }
-                    catch (Exception ex) 
-                    {
-                        _logger.LogError(ex,"An error occured while writting data into raw drug collection");
-                        throw ex;
-                    }
-                }
-
+                alreadyExistingRawDrug = allExistingRawDrugs.FirstOrDefault(x => x.ItemName == rawDrugInfo.ItemName);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                _logger.LogError(ex,"An error occured while getting drug infos from the raw drug collection");
-                throw ex;
+                _logger.LogError(ex, "An error occured while getting drug infos from the raw drug collection");
+                throw;
             }
+
+            if (alreadyExistingRawDrug != null)
+            {
+                throw new DuplicateValueException((int)ErrorCodes.DUPLICATE_VALUES, "Raw drug name already exists");
+            }
+            else
+            {
+                try
+                {
+                    //create new raw drug instance
+                    RawDrug rawDrug = new RawDrug();
+                    rawDrug.Amount = rawDrugInfo.Amount;
+                    rawDrug.ItemName = rawDrugInfo.ItemName;
+                    rawDrug.MeasurementUnit = rawDrugInfo.MeasurementUnit;
+                    rawDrug.ExpirationDate = rawDrugInfo.ExpirationDate;
+                    rawDrug.Category = rawDrugInfo.Category;
+                    rawDrug.ReorderPoint = rawDrugInfo.ReorderPoint;
+                    rawDrug.Id = ObjectId.GenerateNewId().ToString();
+
+                    await _mongoDbService.RawDrugs.InsertOneAsync(rawDrug);
+                    return new
+                    {
+                        message = "New raw drug is successfully added",
+                        isSuccessful = true
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occured while writting data into raw drug collection");
+                    throw;
+                }
+            }
+
+
+
         }
 
-        public async Task<List<RawDrugInfo>> GetAllRawDrugs() 
+        public async Task<List<RawDrugInfo>> GetAllRawDrugs()
         {
             try
             {
@@ -89,7 +104,7 @@ namespace TaskNest.Services
                 var allExistingRawDrugs = await result.ToListAsync();
                 List<RawDrugInfo> rawDrugList = new List<RawDrugInfo>();
 
-                foreach (var rawDrug in allExistingRawDrugs) 
+                foreach (var rawDrug in allExistingRawDrugs)
                 {
                     RawDrugInfo rawDrugInfo = new RawDrugInfo();
                     rawDrugInfo.ItemName = rawDrug.ItemName;
@@ -99,38 +114,41 @@ namespace TaskNest.Services
                     rawDrugInfo.MeasurementUnit = rawDrug.MeasurementUnit;
                     rawDrugInfo.Id = rawDrug.Id;
                     rawDrugInfo.ReorderPoint = rawDrug.ReorderPoint;
-                    
+
                     rawDrugList.Add(rawDrugInfo);
                 }
 
                 return rawDrugList;
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                _logger.LogError(ex,"An error occured while getting data from the rawdrugs collection");
-                throw ex;
+                _logger.LogError(ex, "An error occured while getting data from the rawdrugs collection");
+                throw;
             }
         }
 
-        public async Task<RawDrug> GetRawDrugById(string Id) 
+        public async Task<RawDrug> GetRawDrugById(string Id)
         {
             try
             {
                 var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
                 return await _mongoDbService.RawDrugs.Find(filter).FirstOrDefaultAsync();
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting raw drug document by using Id");
-                throw ex;
+                throw;
             }
         }
 
         public async Task<Object> UpdateRawDrug(string Id, RawDrugInfo rawDrugUpdatedValues)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(rawDrugUpdatedValues);
 
-            //var rawDrug = GetRawDrugById(Id);
-            //double? changedAmount = rawDrug?.Result.Amount;
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
 
             try
             {
@@ -181,91 +199,125 @@ namespace TaskNest.Services
 
         public async Task<Object> UpdateRawDrugInventory(string Id, InventoryUpdate rawDrugUpdatedValues)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(rawDrugUpdatedValues);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
 
             var rawDrug = GetRawDrugById(Id);
             double? changedAmount = rawDrug?.Result.Amount;
 
-            try
+
+            var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
+            // Build the update definition dynamically
+            var updateDefinitionBuilder = Builders<RawDrug>.Update;
+
+
+            // Check if the property exists and matches the value
+            PropertyInfo property = rawDrugUpdatedValues?.GetType().GetProperty("Balance");
+            if (property != null)
             {
-                var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
-                // Build the update definition dynamically
-                var updateDefinitionBuilder = Builders<RawDrug>.Update;
+                double balaceAmount = rawDrugUpdatedValues.Balance;
+                var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
+                // Update the raw Drugs Collection
 
+                UpdateResult result;
 
-                // Check if the property exists and matches the value
-                PropertyInfo property = rawDrugUpdatedValues?.GetType().GetProperty("Balance");
-                if (property != null)
+                try
                 {
-                    double balaceAmount = rawDrugUpdatedValues.Balance;
-                    var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
-                    // Update the raw Drugs Collection
-                    var result = await _mongoDbService.RawDrugs.UpdateOneAsync(filter, update);
-
-                    if (result.ModifiedCount > 0)
-                    {
-                        //Add history record
-                        HistoryInfo historyInfo = new HistoryInfo();
-                        historyInfo.AdjustedAmount = rawDrugUpdatedValues.AmountAdjusted;
-                        historyInfo.AdjustmentType = rawDrugUpdatedValues.AdjustmentType;
-                        historyInfo.CurrentAmount = rawDrugUpdatedValues.Balance;
-                        historyInfo.InitialAmount = rawDrugUpdatedValues.InitialAmount;
-                        historyInfo.ItemName = rawDrugUpdatedValues.ItemName;
-                        historyInfo.StoreKeeper = rawDrugUpdatedValues.Author;
-                        historyInfo.MeasurementUnit = rawDrugUpdatedValues.MeasurementUnit;
-                        historyInfo.Time = DateTime.UtcNow;
-                        historyInfo.Reason = rawDrugUpdatedValues.Reason;
-
-                        try
-                        {
-                            _historyService.AddHistoryRecord(historyInfo);
-                        }
-                        catch (Exception ex) 
-                        {
-                            throw ex;
-                        }
-
-                        return new
-                        {
-                            message = "Document is successfully updated",
-                            rawDrugId = Id,
-                            isSuccessful = true,
-                        };
-                    }
-                    else
-                    {
-                        return new
-                        {
-                            message = "Document is not successfully updated",
-                            rawDrugId = Id,
-                            isSuccessful = false
-                        };
-                    }
+                    result = await _mongoDbService.RawDrugs.UpdateOneAsync(filter, update);
                 }
-                else 
+                catch (Exception ex)
                 {
-                    //throw new AttributeNotFoundException("Expected attribute does not exist");
+                    // Log the full error details for debugging
+                    _logger.LogError(ex, "An error occurred while updating the given raw drug document");
+
+                    // Return a generic error response
                     return new
                     {
-                        message = "Balance is missing in the provided request",
+                        message = "An unexpected error occurred. Please try again later.",
                         isSuccessful = false
                     };
                 }
 
-            }
-            catch (Exception ex)
-            {
-                // Log the full error details for debugging
-                _logger.LogError(ex, "An error occurred while updating the given raw drug document");
+                if (result.ModifiedCount > 0)
+                {
+                    //Add history record
+                    HistoryInfo historyInfo = new HistoryInfo();
+                    historyInfo.AdjustedAmount = rawDrugUpdatedValues.AmountAdjusted;
+                    historyInfo.AdjustmentType = rawDrugUpdatedValues.AdjustmentType;
+                    historyInfo.CurrentAmount = rawDrugUpdatedValues.Balance;
+                    historyInfo.InitialAmount = rawDrugUpdatedValues.InitialAmount;
+                    historyInfo.ItemName = rawDrugUpdatedValues.ItemName;
+                    historyInfo.StoreKeeper = rawDrugUpdatedValues.Author;
+                    historyInfo.MeasurementUnit = rawDrugUpdatedValues.MeasurementUnit;
+                    historyInfo.Time = DateTime.UtcNow;
+                    historyInfo.Reason = rawDrugUpdatedValues.Reason;
 
-                // Return a generic error response
+                    //add the inventory transaction into the history
+                    try
+                    {
+                        await _historyService.AddHistoryRecord(historyInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occured while adding a history record from rawdrug inventory updating process");
+                        throw;
+                    }
+
+                    //Add a notification if current amount is less than reorder point.
+                    if (rawDrug?.Result.ReorderPoint > rawDrugUpdatedValues?.Balance)
+                    {
+                        try
+                        {
+                            NotificationInfo notificationInfo = new NotificationInfo();
+                            notificationInfo.CreatedAt = DateTime.Now;
+                            notificationInfo.NotificationType = (int)NotificationEnum.NOTIFICATION_TYPE_REORDER;
+                            notificationInfo.ItemType = (int)ItemType.RAW_DRUG;
+                            notificationInfo.ItemName = rawDrugUpdatedValues.ItemName;
+
+                            await _notificationService.AddNotification(notificationInfo);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "An error occured while adding a notification from rawdrug inventory updating process");
+                            throw;
+                        }
+                    }
+
+                    return new
+                    {
+                        message = "Document is successfully updated",
+                        rawDrugId = Id,
+                        isSuccessful = true,
+                    };
+                }
+                else
+                {
+                    return new
+                    {
+                        message = "Document is not successfully updated",
+                        rawDrugId = Id,
+                        isSuccessful = false
+                    };
+                }
+            }
+            else
+            {
+                //throw new AttributeNotFoundException("Expected attribute does not exist");
                 return new
                 {
-                    message = "An unexpected error occurred. Please try again later.",
+                    message = "Balance is missing in the provided request",
                     isSuccessful = false
                 };
             }
+
+
+
         }
-        public async Task<object> DeleteRawDrug (string rawDrugId) 
+        public async Task<object> DeleteRawDrug(string rawDrugId)
         {
             try
             {
@@ -275,25 +327,25 @@ namespace TaskNest.Services
 
                 if (result.DeletedCount > 0)
                 {
-                    return new 
-                    { 
-                        Message = "Record deleted successfully.", 
+                    return new
+                    {
+                        Message = "Record deleted successfully.",
                         IsSuccessful = true
                     };
                 }
                 else
                 {
-                    return new 
-                    { 
-                        Message = "No record found with the given Id.", 
+                    return new
+                    {
+                        Message = "No record found with the given Id.",
                         IsSuccessful = false
                     };
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                _logger.LogError(ex,"An error occured while deleting the raw drug record in the DB.");
-                throw ex;
+                _logger.LogError(ex, "An error occured while deleting the raw drug record in the DB.");
+                throw;
             }
         }
 

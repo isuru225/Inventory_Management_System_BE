@@ -1,15 +1,21 @@
 ﻿using Amazon.Runtime.Internal;
 using Amazon.Runtime.Internal.Util;
+using AspNetCore.Identity.MongoDbCore.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.WebUtilities;
 using MongoDB.Driver;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Authentication;
 using System.Security.Claims;
 using System.Security.Principal;
+using System.Text;
 using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
 using TaskNest.FrontendModels;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -23,6 +29,7 @@ namespace TaskNest.Services
         private UserManager<ApplicationUser> _userManager;
         private RoleManager<ApplicationRole> _roleManager;
         private IMongoDbService _mongoDbService;
+        private IEmailService _emailService;
 
         public UserManagementService
             (
@@ -32,7 +39,8 @@ namespace TaskNest.Services
             UserManager<ApplicationUser> userManager,
             RoleManager<ApplicationRole> roleManager,
             SignInManager<ApplicationUser> signInManager,
-            IMongoDbService mongoDbService
+            IMongoDbService mongoDbService,
+            IEmailService emailService
             )
         {
             _logger = logger;
@@ -41,41 +49,53 @@ namespace TaskNest.Services
             _userManager = userManager;
             _roleManager = roleManager;
             _mongoDbService = mongoDbService;
+            _emailService = emailService;
         }
 
         public async Task<TokenResult> Login(UserLogin userLogin)
         {
-            //validate the login object
-            var validationResults = new List<ValidationResult>();
-            var validationContext = new ValidationContext(userLogin);
 
-            bool isValid = Validator.TryValidateObject(userLogin, validationContext, validationResults, true);
+            var (isValid, errors) = ValidationHelper.ValidateObject(userLogin);
 
             if (!isValid)
             {
-                throw new InvalidRequestedDataException("Requested data is not valid");
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
             }
 
+            ApplicationUser? userExists;
 
-            //check whether the user is still exist
             try
             {
-                var userExists = await _userManager.FindByEmailAsync(userLogin.UserName);
+                userExists = await _userManager.FindByEmailAsync(userLogin.UserName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while finding the user by {userLogin?.UserName}");
+                throw;
+            }
 
-                if (userExists != null)
+            if (userExists != null)
+            {
+                Boolean isPasswordValid = false;
+                try
                 {
                     //verify the combination of email and password is correct.
-                    var isPasswordValid = await _userManager.CheckPasswordAsync(userExists, userLogin.Password);
+                    isPasswordValid = await _userManager.CheckPasswordAsync(userExists, userLogin.Password);
 
-                    if (!isPasswordValid)
-                    {
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occured while checking the provided password!");
+                    throw;
+                }
 
-                        throw new InvalidCredentialsException(100,"Password is incorrect"); 
-                 
-                    }
-                    else
-                    {
-                        var claims = new List<Claim>
+                if (!isPasswordValid)
+                {
+                    throw new InvalidCredentialsException((int)ErrorCodes.INVALID_PASSWORD, "Password is incorrect");
+                }
+                else
+                {
+                    var claims = new List<Claim>
                             {
                                 new Claim(JwtRegisteredClaimNames.Sub, userExists.Id.ToString()), // Subject claim
                                 new Claim("name", userExists.UserName),                           // Custom claim for name
@@ -83,43 +103,33 @@ namespace TaskNest.Services
                                 new Claim("userId", userExists.Id.ToString()),            // Custom claim for name identifier
                                 new Claim("fullName", userExists.FullName.ToString())
                             };
-
-                        try
-                        {
-                            var roles = await _userManager.GetRolesAsync(userExists);
-                            foreach (var role in roles)
-                            {
-                                claims.Add(new Claim("role", role));
-                            }
-
-                            TokenResult tokenObject = _tokenService.CreateToken(claims);
-                            return tokenObject;
-
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "An error occured while getting user roles.");
-                            throw ex;
-                        }
+                    var roles = await _userManager.GetRolesAsync(userExists);
+                    foreach (var role in roles)
+                    {
+                        claims.Add(new Claim("role", role));
                     }
-                }
-                else
-                {
-                    throw new UserNotFoundException(101,"Can not find an user by provided email"); 
-      
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occured while finding user by email");
-                throw ex;
-            }
 
+                    TokenResult tokenObject = _tokenService.CreateToken(claims);
+                    return tokenObject;
+
+                }
+            }
+            else
+            {
+                throw new UserNotFoundException((int)ErrorCodes.INVALID_EMAIL, "Can not find an user by provided email");
+            }
 
         }
 
         public async Task<String> CreateRole(CreateRole createRole)
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(createRole);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
             var appRole = new ApplicationRole
             {
                 Name = createRole.RoleName
@@ -133,100 +143,90 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while creating user role.");
-                throw ex;
+                throw;
             }
         }
         public async Task<RegisterResponse> RegisteredUser(UserRegisterInfo userRegisterInfo)
         {
-            //validate the login object
-            var validationResults = new List<ValidationResult>();
-            var validationContext = new ValidationContext(userRegisterInfo);
 
-            bool isValid = Validator.TryValidateObject(userRegisterInfo, validationContext, validationResults, true);
+            var (isValid, errors) = ValidationHelper.ValidateObject(userRegisterInfo);
 
             if (!isValid)
             {
-                throw new InvalidRequestedDataException("Incoming data is invalid");
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
             }
 
-            //check whether the user is still exist
+            ApplicationUser? userExists;
+
             try
             {
-                var userExists = await _userManager.FindByEmailAsync(userRegisterInfo.Email);
-                if (userExists != null)
+                userExists = await _userManager.FindByEmailAsync(userRegisterInfo.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while finding the user by {userRegisterInfo?.Email}");
+                throw;
+            }
+
+            if (userExists != null)
+            {
+                return new RegisterResponse
                 {
-                    return new RegisterResponse
+                    Message = "User is already exist",
+                    Success = false
+                };
+            }
+
+            //create new ApplicationUser
+            ApplicationUser user = new ApplicationUser
+            {
+                UserName = userRegisterInfo.Email,
+                Email = userRegisterInfo.Email,
+                FullName = userRegisterInfo.FirstName + " " + userRegisterInfo.LastName,
+                PhoneNumber = userRegisterInfo.MobileNumber
+            };
+
+            try
+            {
+
+                var result = await _userManager.CreateAsync(user, userRegisterInfo.Password);
+
+                if (result.Succeeded)
+                {
+                    //add user roles
+
+                    var addUserToRoleResult = await _userManager.AddToRoleAsync(user, userRegisterInfo.Role);
+                    if (addUserToRoleResult.Succeeded)
                     {
-                        Message = "User is already exist",
-                        Success = false
-                    };
+                        return new RegisterResponse
+                        {
+                            Message = "Registration Successful",
+                            Success = true
+                        };
+                    }
+                    else
+                    {
+                        return new RegisterResponse
+                        {
+                            Message = "User created successfully. But adding roles failed",
+                            Success = false
+                        };
+                    }
+
                 }
                 else
                 {
-                    //create new ApplicationUser
-                    var user = new ApplicationUser
+                    return new RegisterResponse
                     {
-                        UserName = userRegisterInfo.Email,
-                        Email = userRegisterInfo.Email,
-                        FullName = userRegisterInfo.FirstName + " " + userRegisterInfo.LastName,
-                        PhoneNumber = userRegisterInfo.MobileNumber
+                        Message = "Create user failed",
+                        Success = false
                     };
-
-                    try
-                    {
-                        var result = await _userManager.CreateAsync(user, userRegisterInfo.Password);
-
-                        if (result.Succeeded)
-                        {
-                            //add user roles
-
-                            try
-                            {
-                                var addUserToRoleResult = await _userManager.AddToRoleAsync(user, userRegisterInfo.Role);
-                                if (addUserToRoleResult.Succeeded)
-                                {
-                                    return new RegisterResponse
-                                    {
-                                        Message = "Registration Successful",
-                                        Success = true
-                                    };
-                                }
-                                else
-                                {
-                                    return new RegisterResponse
-                                    {
-                                        Message = "User created successfully. But adding roles failed",
-                                        Success = false
-                                    };
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "An error occured while add roles");
-                                throw ex;
-                            }
-                        }
-                        else
-                        {
-                            return new RegisterResponse
-                            {
-                                Message = "Create user failed",
-                                Success = false
-                            };
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "An error occured while registering a new user.");
-                        throw ex;
-                    }
-
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occured while finding an user by email.");
-                throw ex;
+                _logger.LogError(ex, $"An error occured while registering new user using {userRegisterInfo.Email}");
+                throw;
             }
         }
 
@@ -236,92 +236,87 @@ namespace TaskNest.Services
             {
                 var employee = await _userManager.FindByEmailAsync(userName);
 
-                if (employee != null)
+                if (employee == null)
                 {
-
-                }
-                else
-                {
-                    throw new UserNotFoundException(101,"Can not find an user by provided email");
+                    throw new UserNotFoundException(101, "Can not find an user by provided email");
                 }
 
                 return employee;
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                _logger.LogError(ex,"An error occured while getting employee info from Application User");
-                throw ex;
+                _logger.LogError(ex, "An error occured while getting employee info from Application User");
+                throw;
             }
         }
 
-        public async Task<List<RegisteredUsersInfo>> GetRegisteredUser() 
+        public async Task<List<RegisteredUsersInfo>> GetRegisteredUser()
         {
+
+
+            var filter = Builders<ApplicationUser>.Filter.Empty;
+            var projection = Builders<ApplicationUser>.Projection.Expression(u => new ApplicationUser
+            {
+                Id = u.Id,
+                FullName = u.FullName,
+                Email = u.Email,
+                PhoneNumber = u.PhoneNumber,
+                Roles = u.Roles
+            });
+
+            List<ApplicationUser> registeredEmployees = new List<ApplicationUser>(); 
+
             try
             {
-                var filter = Builders<ApplicationUser>.Filter.Empty;
-                var projection = Builders<ApplicationUser>.Projection.Expression(u => new ApplicationUser
-                {
-                    Id = u.Id,
-                    FullName = u.FullName,
-                    Email = u.Email,
-                    PhoneNumber = u.PhoneNumber,
-                    Roles = u.Roles
-                });
-
-                var registeredEmployees = await _mongoDbService.applicationUsers
-                    .Find(filter)
-                    .Project(projection)
-                    .ToListAsync();
-
-
-                try
-                {
-                    var roleList = await getRelevantUserRoleTypes();
-                    List<RegisteredUsersInfo> userRegisterInfos = new List<RegisteredUsersInfo>();
-                    foreach (var registeredEmployee in registeredEmployees)
-                    {
-                        RegisteredUsersInfo registeredUsersInfo = new RegisteredUsersInfo();
-                        registeredUsersInfo.FullName = registeredEmployee.FullName;
-                        registeredUsersInfo.Email = registeredEmployee.Email;
-                        registeredUsersInfo.MobileNumber = registeredEmployee.PhoneNumber;
-                        registeredUsersInfo.Id = registeredEmployee.Id;
-
-                        List<String> roles = new List<String>();
-
-                        foreach (var roleId in registeredEmployee.Roles) 
-                        {
-                            foreach (var role in roleList)
-                            {
-                                if (roleId == role.Id) 
-                                {
-                                    roles.Add(role.Name);
-                                    break;
-                                }
-                            }
-
-                        }
-
-                        registeredUsersInfo.Roles = roles;
-                        userRegisterInfos.Add(registeredUsersInfo);
-                        
-                    }
-
-                    if (registeredEmployees.Count == 0)
-                    {
-                        throw new UserNotFoundException(404, "No registered users available");
-                    }
-
-                    return userRegisterInfos;
-                }
-                catch (Exception ex) 
-                {
-                    throw ex;
-                }
+                registeredEmployees = await _mongoDbService.applicationUsers
+                .Find(filter)
+                .Project(projection)
+                .ToListAsync();
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                throw ex;
+                _logger.LogError(ex,"An error occured while getting registered users!");
+                throw;
             }
+
+           
+            var roleList = await getRelevantUserRoleTypes();
+            List<RegisteredUsersInfo> userRegisterInfos = new List<RegisteredUsersInfo>();
+            foreach (ApplicationUser registeredEmployee in registeredEmployees)
+            {
+                RegisteredUsersInfo registeredUsersInfo = new RegisteredUsersInfo();
+                registeredUsersInfo.FullName = registeredEmployee.FullName;
+                registeredUsersInfo.Email = registeredEmployee.Email;
+                registeredUsersInfo.MobileNumber = registeredEmployee.PhoneNumber;
+                registeredUsersInfo.Id = registeredEmployee.Id;
+
+                List<String> roles = new List<String>();
+
+                foreach (var roleId in registeredEmployee.Roles)
+                {
+                    foreach (var role in roleList)
+                    {
+                        if (roleId == role.Id)
+                        {
+                            roles.Add(role.Name);
+                            break;
+                        }
+                    }
+
+                }
+
+                registeredUsersInfo.Roles = roles;
+                userRegisterInfos.Add(registeredUsersInfo);
+
+            }
+
+            if (registeredEmployees.Count == 0)
+            {
+                throw new UserNotFoundException(404, "No registered users available");
+            }
+
+            return userRegisterInfos;
+
         }
 
         public async Task<object> DeleteRegisteredUser(string userId)
@@ -352,22 +347,150 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while deleting the history record in the DB.");
-                throw ex;
+                throw;
             }
         }
 
-        public async Task<List<ApplicationRole>> getRelevantUserRoleTypes() 
+        public async Task<List<ApplicationRole>> getRelevantUserRoleTypes()
         {
-            try 
+            try
             {
                 var filter = Builders<ApplicationRole>.Filter.Empty;
                 var result = await _mongoDbService.applicationRoles.Find(filter).ToListAsync();
                 return result;
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                throw ex;
+                _logger.LogError(ex, "An error occured while getting user role types.");
+                throw;
             }
+        }
+
+        public async Task<object> forgotPassword(ForgetPasswordRequest forgetPasswordRequest)
+        {
+
+            var (isValid, errors) = ValidationHelper.ValidateObject(forgetPasswordRequest);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+            //define application user
+            ApplicationUser employee;
+
+            try
+            {
+                employee = await _userManager.FindByEmailAsync(forgetPasswordRequest.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while finding the user by {forgetPasswordRequest?.Email}");
+                throw;
+            }
+
+            if (employee == null)
+            {
+                throw new UserNotFoundException((int)ErrorCodes.INVALID_EMAIL, "Can not find an user by provided email");
+            }
+
+
+            string emailContent = "";
+
+            try
+            {
+                var passwordResetToken = await _userManager.GeneratePasswordResetTokenAsync(employee);
+
+                // Encode token for URL
+                var encodedPasswordResetToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(passwordResetToken));
+
+                var resetUrl = $"{forgetPasswordRequest.ClientURI}/resetpassword?email={Uri.EscapeDataString(forgetPasswordRequest.Email)}&token={encodedPasswordResetToken}";
+
+                emailContent = $"Click the following link to reset your password of the Inventory Management System: <a href='{resetUrl}'>Reset Password</a>";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while generating the password reset token in {forgetPasswordRequest.Email}");
+                throw;
+            }
+
+            try
+            {
+                await _emailService.SendEmailAsync(forgetPasswordRequest.Email, "Reset Password", emailContent);
+
+                return new
+                {
+                    message = "A password reset email has been sent",
+                    isSuccessful = true
+                };
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while sending the password reset email to {forgetPasswordRequest.Email}");
+                throw;
+            }
+
+        }
+
+        public async Task<object> resetPassword(ResetPassword resetPassword)
+        {
+
+            var (isValid, errors) = ValidationHelper.ValidateObject(resetPassword);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
+            //define application user
+            ApplicationUser employee;
+
+            try
+            {
+                employee = await _userManager.FindByEmailAsync(resetPassword.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occured while finding the user by {resetPassword?.Email}");
+                throw;
+            }
+
+            if (employee == null)
+            {
+                throw new UserNotFoundException((int)ErrorCodes.INVALID_EMAIL, "Can not find an user by provided email");
+            }
+
+            try
+            {
+                // Decode token from URL-safe Base64
+                var decodedPasswordResetTokenBytes = WebEncoders.Base64UrlDecode(resetPassword.PasswordResetToken);
+                var decodedPasswordResetToken = Encoding.UTF8.GetString(decodedPasswordResetTokenBytes);
+
+                var resetPassResult = await _userManager.ResetPasswordAsync(employee, decodedPasswordResetToken, resetPassword.NewPassword);
+
+                if (!resetPassResult.Succeeded)
+                {
+                    var Errors = resetPassResult.Errors.Select(e => e.Description);
+                    return new
+                    {
+                        message = $"Error : {Errors}",
+                        isSuccessful = false
+                    };
+                }
+
+                return new
+                {
+                    message = "Password has been reset successfully.",
+                    isSuccessful = true
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occured while resetting the password.");
+                throw;
+            }
+
         }
     }
 }

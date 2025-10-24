@@ -17,6 +17,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Data;
+using Microsoft.AspNetCore.Identity.Data;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Security.Authentication;
+using TaskNest.Custom.Exceptions;
 
 namespace TaskNest
 {
@@ -124,6 +128,7 @@ namespace TaskNest
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IFinishedDrugService, FinishedDrugService>();
             builder.Services.AddScoped<IGeneralStoreService, GeneralStoreService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
 
             builder.Services.AddCors(options =>
             {
@@ -150,6 +155,11 @@ namespace TaskNest
             app.UseHttpsRedirection();
             // Use the CORS policy
             app.UseCors("AllowFrontend");
+
+            //app.Use(() =>
+            //{
+
+            //});
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -184,32 +194,71 @@ namespace TaskNest
                     var result = await userManagementService.Login(userLogin);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex) 
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (InvalidCredentialsException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
-                    return Results.BadRequest(ex);
+                    return Results.BadRequest(ex); ;
                 }
-
             });
 
-            app.MapPost("/register", async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
+            app.MapPost("/register", [Authorize(Roles = "Admin")] async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
             {
                 try
                 {
                     var result = await userManagementService.RegisteredUser(userRegisterInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
                 }
             });
 
-            app.MapPost("/addrole", async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
+            app.MapPost("/addrole", [Authorize(Roles = "Admin")] async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
             {
                 try
                 {
                     var result = await userManagementService.CreateRole(createRole);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -296,6 +345,22 @@ namespace TaskNest
                     var result = await rawDrugService.AddNewRawDrug(rawDrugInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (DuplicateValueException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -321,6 +386,14 @@ namespace TaskNest
                 {
                     var result = await rawDrugService.UpdateRawDrug(Id, updateRawDrugValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -350,6 +423,14 @@ namespace TaskNest
                     return Results.Ok(result);
 
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -365,6 +446,14 @@ namespace TaskNest
                     return Results.Ok(result);
 
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -373,7 +462,7 @@ namespace TaskNest
 
 
             //get all the history records
-            app.MapGet("/gethistoryrecords", [Authorize(Roles = "Admin")] async (IHistoryService historyService) =>
+            app.MapGet("/gethistoryrecords", [Authorize] async (IHistoryService historyService) =>
             {
                 try
                 {
@@ -412,6 +501,22 @@ namespace TaskNest
                     var result = await finishedDrugService.AddNewFinishedDrug(finishedDrugInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (DuplicateValueException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -437,6 +542,14 @@ namespace TaskNest
                 {
                     var result = await finishedDrugService.UpdateFinishedDrug(Id, updateFinishedDrugValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -466,6 +579,14 @@ namespace TaskNest
                     var result = await generalStoreService.AddNewGeneralStoreItem(generalStoreItemInfo);
                     return Results.Ok(result);
                 }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(ex);
@@ -491,6 +612,14 @@ namespace TaskNest
                 {
                     var result = await generalStoreService.UpdateGeneralStoreItem(Id, updateGeneralStoreItemValues);
                     return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -524,8 +653,23 @@ namespace TaskNest
                     return Results.BadRequest(ex);
                 }
             });
+            // update all notifications as marked
+            app.MapPatch("/updatenotificationsasmarked", [Authorize]  async (INotificationService notificationService) => 
+            {
+                try
+                {
+                    var result = await notificationService.UpdateAvailableNotificationAsMarked();
+                    return Results.Ok(result);
+                }
+                catch (Exception ex) 
+                {
+                    return Results.BadRequest(ex);
+                }
+            
+            });
+           
             //get all registered users
-            app.MapGet("/getregisteredusers", [Authorize] async (IUserManagementService userManagementService) =>
+            app.MapGet("/getregisteredusers", [Authorize(Roles = "Admin")] async (IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -537,6 +681,7 @@ namespace TaskNest
                     return Results.BadRequest(ex);
                 }
             });
+            //
             //delete a selected registered user record
             app.MapDelete("/deleteregistereduser/{id}", [Authorize(Roles = "Admin")] async (string Id, IUserManagementService userManagementService) =>
             {
@@ -551,6 +696,67 @@ namespace TaskNest
                 }
             });
 
+            app.MapPost("/login/forgotpassword", async (IUserManagementService userManagementService, ForgetPasswordRequest forgetPasswordRequest) =>
+            {
+                try
+                {
+                    var result = await userManagementService.forgotPassword(forgetPasswordRequest);
+                    return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = ex.Message,
+                        isSuccessful = false
+                    });
+                }
+            });
+
+            app.MapPost("/login/resetpassword", async (IUserManagementService userManagementService, ResetPassword resetPassword) =>
+            {
+                try
+                {
+                    var result = await userManagementService.resetPassword(resetPassword);
+                    return Results.Ok(result);
+                }
+                catch (InvalidRequestedDataException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(ex);
+                }
+            });
 
             app.Run();
         }

@@ -13,5 +13,6 @@ namespace TaskNest.IServices
         IMongoCollection<ApplicationRole> applicationRoles { get; }
         IMongoCollection<FinishedDrug> FinishedDrugs { get; }
         IMongoCollection<GeneralStoreItem> GeneralStoreItems {  get; }
+        IMongoCollection<Notification> Notifications { get; }
     }
 }

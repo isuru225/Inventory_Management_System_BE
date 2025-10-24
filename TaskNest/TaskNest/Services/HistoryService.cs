@@ -1,6 +1,9 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
+using TaskNest.Custom.Exceptions;
+using TaskNest.Enum;
 using TaskNest.Frontend.Models;
+using TaskNest.Helper;
 using TaskNest.IServices;
 using TaskNest.Models;
 
@@ -18,6 +21,13 @@ namespace TaskNest.Services
 
         public async Task<Object> AddHistoryRecord(HistoryInfo historyInfo) 
         {
+            var (isValid, errors) = ValidationHelper.ValidateObject(historyInfo);
+
+            if (!isValid)
+            {
+                throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
+            }
+
             try 
             {
                 History history = new History();
@@ -43,7 +53,7 @@ namespace TaskNest.Services
             catch (Exception ex) 
             {
                 _logger.LogError(ex,"An error occured while adding history record");
-                throw ex;
+                throw;
             }
         }
 
@@ -82,7 +92,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while adding history record");
-                throw ex;
+                throw;
             }
         }
 
@@ -91,6 +101,19 @@ namespace TaskNest.Services
         {
             try
             {
+               
+                List<int> numberList = new List<int> { 1,2,3,4,5 };
+
+                foreach (var number in numberList) 
+                {
+                    Console.WriteLine(number);
+                }
+                IEnumerable<int> numbers = numberList;
+
+                while (numbers.GetEnumerator().MoveNext()) 
+                {
+                    Console.WriteLine(numbers.GetEnumerator().Current);
+                }
 
                 var filter = Builders<History>.Filter.Eq(doc => doc.Id, historyRecordId);
                 var result = await _mongoDbService.History.DeleteOneAsync(filter);
@@ -115,7 +138,7 @@ namespace TaskNest.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while deleting the history record in the DB.");
-                throw ex;
+                throw;
             }
         }
     }

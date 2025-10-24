@@ -2,8 +2,14 @@
 {
     public class InvalidRequestedDataException : Exception
     {
-        public InvalidRequestedDataException() : base() { }
-        public InvalidRequestedDataException(string message) : base(message) { }
-        public InvalidRequestedDataException(string message, Exception innerException) : base(message, innerException) { }
+        public int ErrorCode { get; }   // Custom error code
+        public IEnumerable<string> Errors { get; }
+
+        public InvalidRequestedDataException(int errorCode, IEnumerable<string> errors)
+            : base("DTO validation failed")
+        {
+            ErrorCode = errorCode;
+            Errors = errors;
+        }
     }
 }

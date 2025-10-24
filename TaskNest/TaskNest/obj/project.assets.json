@@ -2990,11 +2990,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
+      "projectUniqueName": "C:\\IMS\\Inventory_Management_System_BE\\Inventory_Management_System_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
       "projectName": "TaskNest",
-      "projectPath": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
+      "projectPath": "C:\\IMS\\Inventory_Management_System_BE\\Inventory_Management_System_BE\\TaskNest\\TaskNest\\TaskNest.csproj",
       "packagesPath": "C:\\Users\\USER\\.nuget\\packages\\",
-      "outputPath": "E:\\Inventory_Management_System\\Inventory_Management_BE\\TaskNest\\TaskNest\\obj\\",
+      "outputPath": "C:\\IMS\\Inventory_Management_System_BE\\Inventory_Management_System_BE\\TaskNest\\TaskNest\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\USER\\AppData\\Roaming\\NuGet\\NuGet.Config",
