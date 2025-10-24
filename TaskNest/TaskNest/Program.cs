@@ -226,7 +226,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapPost("/register", [Authorize(Roles = "Admin")] async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
+            app.MapPost("/register", async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -247,7 +247,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapPost("/addrole", [Authorize(Roles = "Admin")] async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
+            app.MapPost("/addrole", async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
             {
                 try
                 {
