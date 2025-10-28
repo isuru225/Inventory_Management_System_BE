@@ -122,7 +122,6 @@ namespace TaskNest
             builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IHomeService, HomeService>();
-            builder.Services.AddScoped<IProjectService, ProjectService>();
             builder.Services.AddScoped<IRawDrugService, RawDrugService>();
             builder.Services.AddScoped<IHistoryService, HistoryService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -130,11 +129,14 @@ namespace TaskNest
             builder.Services.AddScoped<IGeneralStoreService, GeneralStoreService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
 
+            // Read AllowedOrigins array from configuration
+            var allowedOrigins = builder.Configuration.GetSection("AllowedHosts").Get<string[]>();
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", builder =>
                 {
-                    builder.WithOrigins("http://localhost:3000") // Adjust origin as needed
+                    builder.WithOrigins(allowedOrigins!) // Adjust origin as needed
                            .AllowAnyMethod()
                            .AllowAnyHeader()
                            .AllowCredentials(); // Allow credentials (cookies)
@@ -226,7 +228,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapPost("/register", async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
+            app.MapPost("/register", [Authorize(Roles = "Admin")] async ([FromBody] UserRegisterInfo userRegisterInfo, IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -247,7 +249,7 @@ namespace TaskNest
                 }
             });
 
-            app.MapPost("/addrole", async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
+            app.MapPost("/addrole", [Authorize(Roles = "Admin")] async ([FromBody] CreateRole createRole, IUserManagementService userManagementService) =>
             {
                 try
                 {
@@ -273,63 +275,6 @@ namespace TaskNest
                 try
                 {
                     var result = await userManagementService.GetEmployeeInfo(email);
-                    return Results.Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(ex);
-                }
-            });
-
-            //Home minimal AIPs
-
-            app.MapGet("/home/getprojects", async (IHomeService homeService) =>
-            {
-                try
-                {
-                    var result = await homeService.GetAllProjects();
-                    return Results.Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(ex);
-                }
-            });
-
-            app.MapPost("/admin/addproject", async ([FromBody] ProjectInfo projectInfo, IAdminService adminService) =>
-            {
-                try
-                {
-                    var result = await adminService.AddProjects(projectInfo);
-                    return Results.Ok();
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(ex);
-                }
-            });
-
-            //Project Minimal APIs
-
-            app.MapPost("/project/createprojecttask", async ([FromBody] TaskInfo taskInfo, IProjectService projectService) =>
-            {
-                try
-                {
-                    var result = await projectService.CreateTask(taskInfo);
-                    return Results.Ok(result);
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(ex);
-                }
-            });
-
-            app.MapGet("/project/gettasks", async ([FromQuery] string projectId, IProjectService projectService) =>
-            {
-
-                try
-                {
-                    var result = await projectService.GetProjectSpecificTask(projectId);
                     return Results.Ok(result);
                 }
                 catch (Exception ex)
