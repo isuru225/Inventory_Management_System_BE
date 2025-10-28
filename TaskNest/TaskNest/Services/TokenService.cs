@@ -24,7 +24,8 @@ namespace TaskNest.Services
 
             //Secret key which will be used later during validation
             string key = _jwtSettings.Key;
-            var issuer = _jwtSettings.Issuer;  //normally this will be your site URL    
+            var issuer = _jwtSettings.Issuer;
+            var audience = _jwtSettings.Audience;                                 
 
             //var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetValue<string>("Jwt:Key")));
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
@@ -32,7 +33,7 @@ namespace TaskNest.Services
             //Debug.WriteLine("CVCV",name);
                
             var token = new JwtSecurityToken(issuer, //Issure    
-                            issuer,  //Audience    
+                            audience,  //Audience    
                             claims,
                             expires: DateTime.Now.AddHours(5),
                             signingCredentials: credentials);
