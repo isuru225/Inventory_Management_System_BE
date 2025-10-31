@@ -7,9 +7,9 @@ namespace TaskNest.Models
         [BsonId]
         public string Id { get; set; }
         public string ItemName { get; set; }
-        public double InitialAmount { get; set; }
-        public double CurrentAmount { get; set; }
-        public double AdjustedAmount { get; set; }
+        public decimal InitialAmount { get; set; }
+        public decimal CurrentAmount { get; set; }
+        public decimal AdjustedAmount { get; set; }
         public string AdjustmentType { get; set; }
         public string StoreKeeper { get; set; }
         public string MeasurementUnit { get; set; }

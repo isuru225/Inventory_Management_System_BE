@@ -7,6 +7,6 @@ namespace TaskNest.Models
         [BsonId]
         public string Id { get; set; }
         public string ItemName { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
     }
 }

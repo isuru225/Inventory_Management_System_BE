@@ -148,13 +148,22 @@ namespace TaskNest
 
 
             // Configure the HTTP request pipeline.
+            // Use Swagger in development
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
+
+                // Use HTTPS redirection in dev if certificate is trusted
+                app.UseHttpsRedirection();
+            }
+            else
+            {
+                // Always use HTTPS in production
+                app.UseHttpsRedirection();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             // Use the CORS policy
             app.UseCors("AllowFrontend");
 
@@ -270,12 +279,20 @@ namespace TaskNest
                 }
             });
 
-            app.MapGet("dashboard/getuser", async ([FromQuery] string email, IUserManagementService userManagementService) =>
+            app.MapGet("/getuserprofile", [Authorize] async ([FromQuery] string email, IUserManagementService userManagementService) =>
             {
                 try
                 {
                     var result = await userManagementService.GetEmployeeInfo(email);
                     return Results.Ok(result);
+                }
+                catch (UserNotFoundException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Message,
+                        ErrorCode = ex.ErrorCode
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -601,7 +618,7 @@ namespace TaskNest
                 }
             });
             // update all notifications as marked
-            app.MapPatch("/updatenotificationsasmarked", [Authorize]  async (INotificationService notificationService) => 
+            app.MapPatch("/updatenotificationsasmarked", [Authorize(Roles = "Admin")]  async (INotificationService notificationService) => 
             {
                 try
                 {
