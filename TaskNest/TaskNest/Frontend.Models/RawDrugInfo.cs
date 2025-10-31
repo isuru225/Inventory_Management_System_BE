@@ -17,10 +17,10 @@ namespace TaskNest.Frontend.Models
         public string MeasurementUnit { get; set; }
 
         [Required(ErrorMessage = "Amount is required.")]
-        [Range(1, double.MaxValue, ErrorMessage = "Amount must be at least 1.")]
-        public double Amount { get; set; }
+        [Range(typeof(decimal), "0.000001", "79228162514264337593543950335", ErrorMessage = "Reorder point must be a positive number.")]
+        public decimal Amount { get; set; }
         [Required(ErrorMessage = "Reorder point is required.")]
-        [Range(1, double.MaxValue, ErrorMessage = "Reorder point must be at least 1.")]
-        public double ReorderPoint { get; set; }
+        [Range(typeof(decimal), "0.000001", "79228162514264337593543950335", ErrorMessage = "Reorder point must be a positive number.")]
+        public decimal ReorderPoint { get; set; }
     }
 }

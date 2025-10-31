@@ -188,7 +188,7 @@ namespace TaskNest.Services
             }
 
             var generalStoreItem = GetGeneralStoreItemById(Id);
-            double? changedAmount = generalStoreItem?.Result.Amount;
+            decimal? changedAmount = generalStoreItem?.Result.Amount;
 
 
             var filter = Builders<GeneralStoreItem>.Filter.Eq(doc => doc.Id, Id);
@@ -200,7 +200,7 @@ namespace TaskNest.Services
             PropertyInfo property = generalStoreItemUpdatedValues?.GetType().GetProperty("Balance");
             if (property != null)
             {
-                double balaceAmount = generalStoreItemUpdatedValues.Balance;
+                decimal balaceAmount = generalStoreItemUpdatedValues.Balance;
                 var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
 
                 UpdateResult result;

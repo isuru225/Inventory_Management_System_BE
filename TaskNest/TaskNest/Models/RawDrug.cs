@@ -9,8 +9,8 @@ namespace TaskNest.Models
         public string ItemName { get; set; }
         public DateTime ExpirationDate { get; set; }
         public string Category { get; set; }
-        public double Amount { get; set; }
-        public double ReorderPoint { get; set; }
+        public decimal Amount { get; set; }
+        public decimal ReorderPoint { get; set; }
         public string MeasurementUnit { get; set; }
     }
 }

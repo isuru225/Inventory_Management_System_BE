@@ -10,10 +10,11 @@ namespace TaskNest.IServices
         public Task<TokenResult> Login(UserLogin userLogin);
         public Task<String> CreateRole(CreateRole createRole);
         public Task<RegisterResponse> RegisteredUser(UserRegisterInfo userRegisterInfo);
-        public Task<ApplicationUser> GetEmployeeInfo(string userName);
         public Task<List<RegisteredUsersInfo>> GetRegisteredUser();
         public Task<object> DeleteRegisteredUser(String Id);
         public Task<object> forgotPassword(ForgetPasswordRequest forgetPasswordRequest);
         public Task<object> resetPassword(ResetPassword resetPassword);
+        public Task<UserProfile> GetEmployeeInfo(string userName);
+        public Task<String> GetRoleNameById(string roleId);
     }
 }

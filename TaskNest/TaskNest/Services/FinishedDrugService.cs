@@ -205,7 +205,7 @@ namespace TaskNest.Services
 
 
             var finishedDrug = GetFinishedDrugById(Id);
-            double? changedAmount = finishedDrug?.Result.Amount;
+            decimal? changedAmount = finishedDrug?.Result.Amount;
 
          
             var filter = Builders<FinishedDrug>.Filter.Eq(doc => doc.Id, Id);
@@ -217,7 +217,7 @@ namespace TaskNest.Services
             PropertyInfo property = finishedDrugUpdatedValues?.GetType().GetProperty("Balance");
             if (property != null)
             {
-                double balaceAmount = finishedDrugUpdatedValues.Balance;
+                decimal balaceAmount = finishedDrugUpdatedValues.Balance;
                 var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
                 
                 // store the result of the updating process

@@ -230,24 +230,34 @@ namespace TaskNest.Services
             }
         }
 
-        public async Task<ApplicationUser> GetEmployeeInfo(string userName)
+        public async Task<UserProfile> GetEmployeeInfo(string userName)
         {
+            ApplicationUser applicationUser = null;
             try
             {
-                var employee = await _userManager.FindByEmailAsync(userName);
-
-                if (employee == null)
-                {
-                    throw new UserNotFoundException(101, "Can not find an user by provided email");
-                }
-
-                return employee;
+                applicationUser = await _userManager.FindByEmailAsync(userName);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occured while getting employee info from Application User");
                 throw;
             }
+
+            if (applicationUser == null)
+            {
+                throw new UserNotFoundException((int)ErrorCodes.INVALID_EMAIL, "Can not find an user by provided email");
+            }
+
+            UserProfile userProfile = new UserProfile();
+            userProfile.FullName = applicationUser.FullName;
+            userProfile.PhoneNumber = applicationUser.PhoneNumber;
+            userProfile.Email = applicationUser.Email;
+
+            string roleName = await GetRoleNameById(applicationUser.Roles[0]);
+
+            userProfile.Role = roleName;
+           
+            return userProfile;
         }
 
         public async Task<List<RegisteredUsersInfo>> GetRegisteredUser()
@@ -264,7 +274,7 @@ namespace TaskNest.Services
                 Roles = u.Roles
             });
 
-            List<ApplicationUser> registeredEmployees = new List<ApplicationUser>(); 
+            List<ApplicationUser> registeredEmployees = new List<ApplicationUser>();
 
             try
             {
@@ -275,11 +285,11 @@ namespace TaskNest.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,"An error occured while getting registered users!");
+                _logger.LogError(ex, "An error occured while getting registered users!");
                 throw;
             }
 
-           
+
             var roleList = await getRelevantUserRoleTypes();
             List<RegisteredUsersInfo> userRegisterInfos = new List<RegisteredUsersInfo>();
             foreach (ApplicationUser registeredEmployee in registeredEmployees)
@@ -364,6 +374,23 @@ namespace TaskNest.Services
                 _logger.LogError(ex, "An error occured while getting user role types.");
                 throw;
             }
+        }
+
+        public async Task<String> GetRoleNameById(string roleId)
+        {
+            try
+            {
+                var filter = Builders<ApplicationRole>.Filter.Where(doc => doc.Id == roleId);
+                ApplicationRole applicationRole = await _mongoDbService.applicationRoles.Find(filter).FirstOrDefaultAsync();
+
+                return applicationRole?.Name;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occured while retrieving user roles from the database.");
+                throw;
+            }
+
         }
 
         public async Task<object> forgotPassword(ForgetPasswordRequest forgetPasswordRequest)

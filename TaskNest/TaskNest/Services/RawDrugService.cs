@@ -207,7 +207,7 @@ namespace TaskNest.Services
             }
 
             var rawDrug = GetRawDrugById(Id);
-            double? changedAmount = rawDrug?.Result.Amount;
+            decimal? changedAmount = rawDrug?.Result.Amount;
 
 
             var filter = Builders<RawDrug>.Filter.Eq(doc => doc.Id, Id);
@@ -219,7 +219,7 @@ namespace TaskNest.Services
             PropertyInfo property = rawDrugUpdatedValues?.GetType().GetProperty("Balance");
             if (property != null)
             {
-                double balaceAmount = rawDrugUpdatedValues.Balance;
+                decimal balaceAmount = rawDrugUpdatedValues.Balance;
                 var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
                 // Update the raw Drugs Collection
 
