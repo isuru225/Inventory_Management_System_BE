@@ -145,52 +145,58 @@ namespace TaskNest.Services
                 throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
             }
 
+            var finishedDrug = GetFinishedDrugById(Id);
 
-            try
+            if (finishedDrug?.Result != null)
             {
-
-                var filter = Builders<FinishedDrug>.Filter.Eq(d => d.Id, finishedDrugUpdatedValues.Id);
-                var update = Builders<FinishedDrug>.Update
-                    .Set(d => d.ItemName, finishedDrugUpdatedValues.ItemName)
-                    .Set(d => d.ExpirationDate, finishedDrugUpdatedValues.ExpirationDate)
-                    .Set(d => d.Category, finishedDrugUpdatedValues.Category)
-                    .Set(d => d.Amount, finishedDrugUpdatedValues.Amount)
-                    .Set(d => d.ReorderPoint, finishedDrugUpdatedValues.ReorderPoint)
-                    .Set(d => d.MeasurementUnit, finishedDrugUpdatedValues.MeasurementUnit);
-
-                var result = await _mongoDbService.FinishedDrugs.UpdateOneAsync(filter, update);
-
-                if (result.ModifiedCount > 0)
+                try
                 {
-                    return new
+
+                    var filter = Builders<FinishedDrug>.Filter.Eq(d => d.Id, finishedDrugUpdatedValues.Id);
+                    var update = Builders<FinishedDrug>.Update
+                        .Set(d => d.ExpirationDate, finishedDrugUpdatedValues.ExpirationDate)
+                        .Set(d => d.Category, finishedDrugUpdatedValues.Category);
+
+                    var result = await _mongoDbService.FinishedDrugs.UpdateOneAsync(filter, update);
+
+                    if (result.ModifiedCount > 0)
                     {
-                        message = "Document is successfully updated",
-                        finishedDrugId = Id,
-                        isSuccessful = true,
-                    };
+                        return new
+                        {
+                            message = "Document is successfully updated",
+                            finishedDrugId = Id,
+                            isSuccessful = true,
+                        };
+                    }
+                    else
+                    {
+                        return new
+                        {
+                            message = "No document matched the ID",
+                            finishedDrugId = Id,
+                            isSuccessful = false
+                        };
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
+                    // Log the full error details for debugging
+                    _logger.LogError(ex, "An error occurred while updating the given finished drug document");
+
+                    // Return a generic error response
                     return new
                     {
-                        message = "No document matched the ID",
-                        finishedDrugId = Id,
+                        message = "An unexpected error occurred. Please try again later.",
                         isSuccessful = false
                     };
                 }
             }
-            catch (Exception ex)
+            else 
             {
-                // Log the full error details for debugging
-                _logger.LogError(ex, "An error occurred while updating the given finished drug document");
-
-                // Return a generic error response
-                return new
-                {
-                    message = "An unexpected error occurred. Please try again later.",
-                    isSuccessful = false
-                };
+                throw new ItemNotFoundException((int)ErrorCodes.ITEM_NOT_FOUND, "Expected attribute does not exist");
             }
+
+           
         }
 
         public async Task<Object> UpdateFinishedDrugInventory(string Id, InventoryUpdate finishedDrugUpdatedValues)
@@ -203,23 +209,34 @@ namespace TaskNest.Services
                 throw new InvalidRequestedDataException((int)ErrorCodes.INVALID_REQUEST_DATA, errors);
             }
 
-
             var finishedDrug = GetFinishedDrugById(Id);
-            decimal? changedAmount = finishedDrug?.Result.Amount;
 
-         
-            var filter = Builders<FinishedDrug>.Filter.Eq(doc => doc.Id, Id);
-            // Build the update definition dynamically
-            var updateDefinitionBuilder = Builders<FinishedDrug>.Update;
-
-
-            // Check if the property exists and matches the value
-            PropertyInfo property = finishedDrugUpdatedValues?.GetType().GetProperty("Balance");
-            if (property != null)
+            if (finishedDrug?.Result != null)
             {
-                decimal balaceAmount = finishedDrugUpdatedValues.Balance;
-                var update = updateDefinitionBuilder.Set(d => d.Amount, balaceAmount);
+                decimal? changedAmount = finishedDrug?.Result.Amount;
+                var filter = Builders<FinishedDrug>.Filter.Eq(doc => doc.Id, Id);
+                // Build the update definition dynamically
+                var updateDefinitionBuilder = Builders<FinishedDrug>.Update;
+                decimal balanceAmount = 0;
                 
+                try
+                {
+                    if (int.Parse(finishedDrugUpdatedValues?.AdjustmentType) == (int)AdjustmentType.DECREMENT)
+                    {
+                        balanceAmount = finishedDrugUpdatedValues.InitialAmount - finishedDrugUpdatedValues.AmountAdjusted;
+                    }
+                    else if (int.Parse(finishedDrugUpdatedValues?.AdjustmentType) == (int)AdjustmentType.INCREMENT)
+                    {
+                        balanceAmount = finishedDrugUpdatedValues.InitialAmount + finishedDrugUpdatedValues.AmountAdjusted;
+                    }
+                }
+                catch (FormatException ex)
+                {
+                    _logger.LogError(ex, "Invalid adjustment type: not a number.");
+                    throw;
+                }
+
+                var update = updateDefinitionBuilder.Set(d => d.Amount, balanceAmount);
                 // store the result of the updating process
                 UpdateResult result;
 
@@ -247,7 +264,7 @@ namespace TaskNest.Services
                     HistoryInfo historyInfo = new HistoryInfo();
                     historyInfo.AdjustedAmount = finishedDrugUpdatedValues.AmountAdjusted;
                     historyInfo.AdjustmentType = finishedDrugUpdatedValues.AdjustmentType;
-                    historyInfo.CurrentAmount = finishedDrugUpdatedValues.Balance;
+                    historyInfo.CurrentAmount = balanceAmount;
                     historyInfo.InitialAmount = finishedDrugUpdatedValues.InitialAmount;
                     historyInfo.ItemName = finishedDrugUpdatedValues.ItemName;
                     historyInfo.StoreKeeper = finishedDrugUpdatedValues.Author;
@@ -265,7 +282,7 @@ namespace TaskNest.Services
                     }
 
                     //Add a notification if current amount is less than reorder point.
-                    if (finishedDrug?.Result.ReorderPoint > finishedDrugUpdatedValues?.Balance)
+                    if (finishedDrug?.Result.ReorderPoint > balanceAmount)
                     {
                         try
                         {
@@ -302,12 +319,7 @@ namespace TaskNest.Services
             }
             else
             {
-                //throw new AttributeNotFoundException("Expected attribute does not exist");
-                return new
-                {
-                    message = "Balance is missing in the provided request",
-                    isSuccessful = false
-                };
+                throw new ItemNotFoundException((int)ErrorCodes.ITEM_NOT_FOUND, "Expected attribute does not exist");
             }
 
         }
