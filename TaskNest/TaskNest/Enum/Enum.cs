@@ -7,6 +7,12 @@
 
     }
 
+    public enum AdjustmentType 
+    {
+        INCREMENT = 1,
+        DECREMENT = 0
+    }
+
     public enum ItemType 
     {
         RAW_DRUG = 0,
@@ -19,6 +25,7 @@
         INVALID_PASSWORD = 100,
         INVALID_EMAIL = 101,
         INVALID_REQUEST_DATA = 102,
-        DUPLICATE_VALUES = 103
+        DUPLICATE_VALUES = 103,
+        ITEM_NOT_FOUND = 104
     }
 }

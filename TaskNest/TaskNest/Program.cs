@@ -383,12 +383,21 @@ namespace TaskNest
             {
                 try
                 {
-                    var result = await rawDrugService.UpdateRawDrugInventory(Id,updateValues);
+                    var result = await rawDrugService.UpdateRawDrugInventory(Id, updateValues);
                     return Results.Ok(result);
 
                 }
                 catch (InvalidRequestedDataException ex)
                 {
+                    return Results.BadRequest(new
+                    {
+                        Message = ex.Errors,
+                        ErrorCode = ex.ErrorCode
+                    });
+                }
+                catch (ItemNotFoundException ex) 
+                {
+
                     return Results.BadRequest(new
                     {
                         Message = ex.Errors,
